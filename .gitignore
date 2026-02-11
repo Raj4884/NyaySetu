@@ -1,0 +1,33 @@
+# Environment
+.env
+.venv
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node.js
+node_modules/
+dist/
+build/
+.eslintcache
+
+# Large Data & Models
+backend/data/*.csv
+backend/data/*.xlsx
+backend/ml_models/
+
+# AI / Gemini
+.gemini/
+antigravity/
+brain/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
