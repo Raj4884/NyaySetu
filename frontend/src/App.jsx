@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Cases from './pages/Cases';
 import Laws from './pages/Laws';
@@ -12,6 +13,7 @@ function App() {
             <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
                 <Routes>
                     <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
 
                     <Route element={<ProtectedRoute roles={['judge', 'lawyer', 'citizen']} />}>
                         <Route path="/" element={<Layout><Dashboard /></Layout>} />

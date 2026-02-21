@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { LayoutDashboard, FileText, Scale, TrendingUp, AlertTriangle, ShieldCheck, Activity, Zap, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FileText, Scale, TrendingUp, AlertTriangle, ShieldCheck, Activity, Zap, ChevronRight, Bell, CheckCircle2, Clock } from 'lucide-react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +14,9 @@ const Dashboard = () => {
     const [loadingMore, setLoadingMore] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const [notifications, setNotifications] = useState([]);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
     const user = JSON.parse(localStorage.getItem('user'));
 
     const observer = useRef();
@@ -58,9 +61,32 @@ const Dashboard = () => {
         }
     };
 
+    const fetchNotifications = async () => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
+            const res = await axios.get('/api/notifications', config);
+            setNotifications(res.data);
+            setUnreadCount(res.data.filter(n => !n.read).length);
+        } catch (err) {
+            console.error("Notifications Fetch Error:", err);
+        }
+    };
+
+    const markAllAsRead = async () => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
+            await axios.post('/api/notifications/read-all', {}, config);
+            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+            setUnreadCount(0);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     useEffect(() => {
         fetchStats();
         fetchCases(1);
+        fetchNotifications();
     }, []);
 
     useEffect(() => {
@@ -124,14 +150,70 @@ const Dashboard = () => {
                     </div>
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="glass px-6 py-4 rounded-[2rem] flex items-center gap-4 shadow-xl shadow-blue-900/5 border-white/50">
+                <motion.div variants={itemVariants} className="flex items-center gap-6">
                     <div className="relative">
-                        <div className="w-3 h-3 bg-green-500 rounded-full animate-ping absolute"></div>
-                        <div className="w-3 h-3 bg-green-500 rounded-full relative"></div>
+                        <button
+                            onClick={() => setShowNotifications(!showNotifications)}
+                            className="p-4 bg-white rounded-2xl shadow-xl shadow-blue-900/5 border border-slate-100 hover:bg-slate-50 transition-all relative group"
+                        >
+                            <Bell className={`w-6 h-6 ${unreadCount > 0 ? 'text-blue-600 animate-pulse' : 'text-slate-400'}`} />
+                            {unreadCount > 0 && (
+                                <span className="absolute top-3 right-3 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
+                            )}
+                        </button>
+
+                        <AnimatePresence>
+                            {showNotifications && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    className="absolute right-0 mt-4 w-96 bg-white rounded-[2.5rem] shadow-3xl border border-slate-100 z-[100] overflow-hidden"
+                                >
+                                    <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Judicial Alerts</h4>
+                                        <button onClick={markAllAsRead} className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700">Mark all read</button>
+                                    </div>
+                                    <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                                        {notifications.length > 0 ? (
+                                            notifications.map(n => (
+                                                <div key={n.id} className={`p-6 border-b border-slate-50 hover:bg-slate-50 transition-colors flex gap-4 ${!n.read ? 'bg-blue-50/30' : ''}`}>
+                                                    <div className={`mt-1 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${!n.read ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                                        <Activity className="w-4 h-4" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-900 mb-1">{n.title}</p>
+                                                        <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2 mb-2">{n.message}</p>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1.5">
+                                                                <Clock className="w-3 h-3" /> {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                            {!n.read && <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="p-12 text-center">
+                                                <ShieldCheck className="w-12 h-12 text-slate-100 mx-auto mb-4" />
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No Active Alerts</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
-                    <div>
-                        <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 text-right">System Health</span>
-                        <span className="text-xs font-bold text-slate-800 uppercase tracking-tighter">Core Engine Stable</span>
+
+                    <div className="glass px-6 py-4 rounded-[2rem] flex items-center gap-4 shadow-xl shadow-blue-900/5 border-white/50">
+                        <div className="relative">
+                            <div className="w-3 h-3 bg-green-500 rounded-full animate-ping absolute"></div>
+                            <div className="w-3 h-3 bg-green-500 rounded-full relative"></div>
+                        </div>
+                        <div>
+                            <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 text-right">System Health</span>
+                            <span className="text-xs font-bold text-slate-800 uppercase tracking-tighter">Core Engine Stable</span>
+                        </div>
                     </div>
                 </motion.div>
             </header>
@@ -139,28 +221,28 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
                 <StatCard
                     variants={itemVariants}
-                    title="Total Case Repository"
+                    title={user?.role === 'citizen' ? "Rights & Protections" : user?.role === 'lawyer' ? "Monitored Docket" : "Total Case Repository"}
                     val={stats.total.toLocaleString()}
                     icon={<Scale className="w-6 h-6 text-white" />}
                     iconBg="bg-blue-600 shadow-blue-200"
-                    trend="+12% Since Last Ingestion"
+                    trend={user?.role === 'citizen' ? "Active Statutory Synchronicity" : "+12% Since Last Ingestion"}
                 />
                 <StatCard
                     variants={itemVariants}
-                    title="Critical Action Items"
-                    val={stats.critical}
+                    title={user?.role === 'citizen' ? "Transparency Score" : user?.role === 'lawyer' ? "Priority Impact Alerts" : "Critical Action Items"}
+                    val={user?.role === 'citizen' ? `${stats.critical}%` : stats.critical}
                     icon={<AlertTriangle className="w-6 h-6 text-white" />}
                     iconBg="bg-red-500 shadow-red-200"
-                    trend="Requires Immediate Review"
+                    trend={user?.role === 'citizen' ? "AI-Verified Judicial Fairness" : "Requires Immediate Review"}
                     color="text-red-600"
                 />
                 <StatCard
                     variants={itemVariants}
-                    title="Pending Classifications"
-                    val={stats.pending}
+                    title={user?.role === 'citizen' ? "Scanned Repository" : user?.role === 'lawyer' ? "Impacted Case Load" : "Pending Classifications"}
+                    val={stats.pending.toLocaleString()}
                     icon={<FileText className="w-6 h-6 text-white" />}
                     iconBg="bg-amber-500 shadow-amber-200"
-                    trend="Awaiting Semantic Analysis"
+                    trend={user?.role === 'citizen' ? "Total National Matters Analyzed" : "Awaiting Semantic Analysis"}
                 />
             </div>
 
@@ -187,7 +269,9 @@ const Dashboard = () => {
 
                         <div className="w-full md:w-1/2 flex justify-center relative">
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-4xl font-black text-slate-900">{(stats.chart.reduce((a, b) => a + b, 0) / stats.total * 100).toFixed(0)}%</span>
+                                <span className="text-4xl font-black text-slate-900">
+                                    {stats.total > 0 ? (stats.chart.reduce((a, b) => a + b, 0) / stats.total * 100).toFixed(0) : 0}%
+                                </span>
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Processed</span>
                             </div>
                             <div className="max-w-[18rem] w-full animate-float">

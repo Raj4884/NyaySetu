@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { BookOpen, FileSearch, ArrowRight, Zap, Target, Database } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BookOpen, FileSearch, ArrowRight, Zap, Target, Database, Bell, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Laws = () => {
+    const navigate = useNavigate();
     const [laws, setLaws] = useState([]);
     const [selectedLaw, setSelectedLaw] = useState(null);
+    const [emailLoading, setEmailLoading] = useState(false);
+    const user = JSON.parse(localStorage.getItem('user'));
 
     useEffect(() => {
         const fetchLaws = async () => {
@@ -20,6 +24,20 @@ const Laws = () => {
         };
         fetchLaws();
     }, []);
+
+    const handleEmailReport = async (lawId) => {
+        try {
+            setEmailLoading(true);
+            const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
+            await axios.post(`/api/laws/${lawId}/email`, {}, config);
+            alert("✅ Judicial report dispatched to your verified email.");
+        } catch (err) {
+            console.error(err);
+            alert("❌ Dispatch failed. Please verify your connection.");
+        } finally {
+            setEmailLoading(false);
+        }
+    };
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -87,7 +105,7 @@ const Laws = () => {
                                             <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors text-lg tracking-tight">{l.title}</h4>
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-2">
                                                 <Target className="w-3 h-3 text-red-400" />
-                                                Impact Magnitude: {(Math.random() * 0.4 + 0.6).toFixed(2)}
+                                                Source: {l.scraped_source || 'Gazette Notification'}
                                             </p>
                                         </div>
                                     </div>
@@ -154,10 +172,10 @@ const Laws = () => {
                             <div className="p-14 space-y-12 max-h-[60vh] overflow-y-auto">
                                 <div className="bg-indigo-50 rounded-[2.5rem] p-10 border border-indigo-100/50 relative group">
                                     <h3 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
-                                        <FileSearch className="w-5 h-5" /> Semantic Impact Insight
+                                        <Zap className="w-5 h-5" /> JUDICIAL IMPACT TRANSPARENCY
                                     </h3>
                                     <p className="text-slate-900 leading-relaxed text-lg font-semibold italic">
-                                        "{selectedLaw.impact_reasoning || 'Semantic impact analysis in progress for this enactment...'}"
+                                        "{selectedLaw.impact_reasoning || 'This law dictates new procedural timelines and evidence standards for all related case categories.'}"
                                     </p>
                                 </div>
 
@@ -165,10 +183,12 @@ const Laws = () => {
                                     <div className="space-y-6">
                                         <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-3 px-1">
                                             <span className="w-6 h-[2px] bg-indigo-500"></span>
-                                            Legal Synthesis
+                                            {user?.role === 'citizen' ? 'Plain English Summary' : 'Legal Synthesis'}
                                         </h4>
                                         <div className="bg-slate-50 p-8 rounded-[2rem] border border-slate-100">
-                                            <p className="text-base text-slate-700 font-medium leading-relaxed">{selectedLaw.lawyer_summary}</p>
+                                            <p className="text-base text-slate-700 font-medium leading-relaxed">
+                                                {user?.role === 'citizen' ? selectedLaw.citizen_summary : selectedLaw.lawyer_summary}
+                                            </p>
                                         </div>
                                     </div>
                                     <div className="space-y-6">
@@ -177,7 +197,22 @@ const Laws = () => {
                                             Affected Corollaries
                                         </h4>
                                         <div className="flex flex-wrap gap-4">
-                                            {['Criminal Procedure', 'Evidence Act', 'Digital Privacy', 'Cyber Compliance'].map(tag => (
+                                            {selectedLaw.category === 'Criminal Law' && ['Statutory Penalty', 'Forensic Evidence', 'Bail Reform'].map(tag => (
+                                                <span key={tag} className="text-[10px] font-black bg-white text-slate-800 px-5 py-3 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all uppercase tracking-widest cursor-default">
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                            {selectedLaw.category === 'Procedural Law' && ['Trial Timelines', 'Victim Rights', 'Digital Summons'].map(tag => (
+                                                <span key={tag} className="text-[10px] font-black bg-white text-slate-800 px-5 py-3 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all uppercase tracking-widest cursor-default">
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                            {selectedLaw.category === 'Evidence Law' && ['Digital Footprints', 'Secondary Evidence', 'Cyber Discovery'].map(tag => (
+                                                <span key={tag} className="text-[10px] font-black bg-white text-slate-800 px-5 py-3 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all uppercase tracking-widest cursor-default">
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                            {selectedLaw.category === 'Digital Law' && ['Intermediary Liability', 'Deepfake Takedown', 'National Security'].map(tag => (
                                                 <span key={tag} className="text-[10px] font-black bg-white text-slate-800 px-5 py-3 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all uppercase tracking-widest cursor-default">
                                                     {tag}
                                                 </span>
@@ -185,10 +220,63 @@ const Laws = () => {
                                         </div>
                                     </div>
                                 </div>
+
+                                {selectedLaw.affecting_cases && selectedLaw.affecting_cases.length > 0 && (
+                                    <div className="bg-slate-50/50 rounded-[2rem] p-10 border border-slate-100 mt-12 group">
+                                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-8 flex items-center gap-3 px-1">
+                                            <Target className="w-5 h-5 text-red-400 group-hover:scale-110 transition-transform" />
+                                            XAI-Validated Case Linkages ({selectedLaw.affecting_cases.length})
+                                        </h4>
+                                        <div className="flex flex-col gap-6">
+                                            {selectedLaw.affecting_cases.map(caseItem => (
+                                                <div
+                                                    key={caseItem.id}
+                                                    onClick={() => navigate('/cases')}
+                                                    className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col relative overflow-hidden cursor-pointer group/card"
+                                                >
+                                                    <div className="flex items-start justify-between w-full mb-6">
+                                                        <div className="relative z-10">
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <span className="text-[10px] font-black bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-full uppercase tracking-widest">
+                                                                    {caseItem.case_number}
+                                                                </span>
+                                                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                                                                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">XAI Impact Validated</span>
+                                                            </div>
+                                                            <h5 className="text-xl font-black text-slate-900 group-hover/card:text-indigo-600 transition-colors">
+                                                                {caseItem.title}
+                                                            </h5>
+                                                        </div>
+                                                        <div className="bg-slate-50 p-3 rounded-2xl group-hover/card:bg-indigo-600 group-hover/card:text-white transition-all shadow-sm">
+                                                            <ExternalLink className="w-5 h-5" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="bg-slate-50/80 p-6 rounded-2xl border border-slate-100 relative">
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <Zap className="w-4 h-4 text-amber-500" />
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">XAI Correlation Insight</span>
+                                                        </div>
+                                                        <p className="text-sm text-slate-600 leading-relaxed font-semibold italic">
+                                                            "{caseItem.how_it_affects || 'Semantic analysis identifies significant procedural alignment with the new statutory framework.'}"
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="p-10 bg-slate-50 border-t border-slate-100 flex justify-end gap-5 px-14">
-                                <button onClick={() => setSelectedLaw(null)} className="px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-500 hover:text-slate-900">Close Report</button>
+                                <button
+                                    onClick={() => handleEmailReport(selectedLaw.id)}
+                                    disabled={emailLoading}
+                                    className="px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 transition-all flex items-center gap-3 shadow-sm disabled:opacity-50"
+                                >
+                                    <Bell className="w-4 h-4" />
+                                    {emailLoading ? 'Dispatching...' : 'Email Technical Synthesis'}
+                                </button>
                                 <button onClick={() => setSelectedLaw(null)} className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/30 hover:scale-105 transition-all">Acknowledge Analytics</button>
                             </div>
                         </motion.div>

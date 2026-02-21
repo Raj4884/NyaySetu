@@ -1,10 +1,11 @@
 from app.tasks.celery_init import celery_app
 from app.models.case import Case
-from app.services.ml_service import MLService
-from app.services.nlp_service import NLPService
+from app.tasks.celery_init import celery_app
+from app.models.case import Case
 
 @celery_app.task
 def process_case_priority(case_id):
+    from app.services.ml_service import MLService
     case = Case.objects(id=case_id).first()
     if not case:
         return {'status': 'error', 'message': 'Case not found'}

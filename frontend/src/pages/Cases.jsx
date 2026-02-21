@@ -161,8 +161,8 @@ const Cases = () => {
                                     <div className="flex items-center gap-10 w-full md:w-auto justify-between md:justify-end">
                                         <div className="text-right flex flex-col items-end max-w-[200px]">
                                             <div className="flex flex-wrap gap-1 justify-end">
-                                                {c.law_impacts && c.law_impacts.length > 0 ? (
-                                                    c.law_impacts.slice(0, 2).map((l, i) => (
+                                                {c.impact_reports && c.impact_reports.length > 0 ? (
+                                                    c.impact_reports.slice(0, 2).map((l, i) => (
                                                         <span key={i} className="text-[8px] font-black uppercase px-2 py-1 rounded bg-blue-50 text-blue-600 border border-blue-100 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">
                                                             {l.title}
                                                         </span>
@@ -172,8 +172,8 @@ const Cases = () => {
                                                         No Direct Impact
                                                     </span>
                                                 )}
-                                                {c.law_impacts && c.law_impacts.length > 2 && (
-                                                    <span className="text-[8px] font-bold text-slate-400">+{c.law_impacts.length - 2} more</span>
+                                                {c.impact_reports && c.impact_reports.length > 2 && (
+                                                    <span className="text-[8px] font-bold text-slate-400">+{c.impact_reports.length - 2} more</span>
                                                 )}
                                             </div>
                                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1">Law Impact Matrix</span>
@@ -252,12 +252,12 @@ const Cases = () => {
                                         </p>
                                     </div>
 
-                                    {selectedCase.law_impacts && selectedCase.law_impacts.length > 0 && (
+                                    {selectedCase.impact_reports && selectedCase.impact_reports.length > 0 ? (
                                         <div className="space-y-6">
                                             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-4">
                                                 <Scale className="w-4 h-4 text-emerald-600" /> Legislative Impact Insights (Explainable AI)
                                             </h3>
-                                            {selectedCase.law_impacts.map((impact, idx) => (
+                                            {selectedCase.impact_reports.map((impact, idx) => (
                                                 <div key={idx} className="bg-emerald-50/50 border border-emerald-100 p-8 rounded-[2.5rem] relative overflow-hidden group hover:bg-emerald-50 transition-colors">
                                                     <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                                                         <FileText className="w-16 h-16 text-emerald-600" />
@@ -267,7 +267,7 @@ const Cases = () => {
                                                         <span className="bg-emerald-600 text-[8px] text-white px-2 py-1 rounded-full font-black uppercase tracking-widest leading-none">High Relevance</span>
                                                     </div>
                                                     <p className="text-slate-700 text-sm leading-relaxed font-semibold italic border-l-4 border-emerald-500 pl-4 py-2 bg-white/50 rounded-r-xl">
-                                                        "{impact.impact}"
+                                                        "{impact.explanation}"
                                                     </p>
                                                     <div className="mt-4 flex items-center gap-2 text-[9px] font-black text-emerald-600 uppercase tracking-widest">
                                                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
@@ -275,6 +275,12 @@ const Cases = () => {
                                                     </div>
                                                 </div>
                                             ))}
+                                        </div>
+                                    ) : (
+                                        <div className="bg-amber-50/50 border border-amber-100 p-8 rounded-[2.5rem] text-center">
+                                            <p className="text-amber-700 text-xs font-bold uppercase tracking-widest">
+                                                No new legislative impacts detected for this case.
+                                            </p>
                                         </div>
                                     )}
 

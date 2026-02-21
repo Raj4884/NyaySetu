@@ -6,6 +6,7 @@ class LawImpact(EmbeddedDocument):
     precedent_citation = StringField()
     source = StringField()
     relevance_score = FloatField()
+    impact_level = StringField(choices=['High', 'Medium', 'Low'])
     url = StringField()
     impact_explanation = StringField()
 
@@ -14,6 +15,7 @@ class Case(Document):
         'collection': 'cases',
         'indexes': [
             'case_type',
+            'case_number',
             '-created_at',
             'predicted_priority',
             'status'
@@ -40,6 +42,10 @@ class Case(Document):
     # Impact Analysis
     impact_reports = ListField(EmbeddedDocumentField(LawImpact))
     
+    # Ownership \u0026 Stakeholders
+    lawyer = ReferenceField('User')
+    citizen = ReferenceField('User')
+    
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
@@ -58,11 +64,15 @@ class Case(Document):
             'priority_reasoning': self.priority_reasoning,
             'number_of_evidence': self.number_of_evidence,
             'hearing_count': self.hearing_count,
+            'lawyer_id': str(self.lawyer.id) if self.lawyer else None,
+            'citizen_id': str(self.citizen.id) if self.citizen else None,
             'impact_reports': [
             {
                 'title': ir.precedent_title,
+                'citation': ir.precedent_citation,
                 'source': ir.source,
                 'relevance_score': ir.relevance_score,
+                'impact_level': ir.impact_level,
                 'url': ir.url,
                 'explanation': ir.impact_explanation
             } for ir in self.impact_reports

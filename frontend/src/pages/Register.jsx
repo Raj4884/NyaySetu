@@ -1,26 +1,33 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Shield, Gavel, Briefcase, User as UserIcon, Lock, AtSign, ArrowRight } from 'lucide-react';
+import { Shield, Gavel, Briefcase, User as UserIcon, Lock, AtSign, ArrowRight, UserPlus, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const Login = () => {
+const Register = () => {
     const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('lawyer');
+    const [fullName, setFullName] = useState('');
+    const [role, setRole] = useState('citizen');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    const handleLogin = async (e) => {
+    const handleRegister = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const { data } = await axios.post('/api/auth/login', { username, password });
-            localStorage.setItem('token', data.access_token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            navigate('/');
+            await axios.post('/api/auth/register', {
+                username,
+                email,
+                password,
+                role,
+                full_name: fullName
+            });
+            alert('Registration Successful! Please login.');
+            navigate('/login');
         } catch (err) {
-            alert('Authentication Failed');
+            alert(err.response?.data?.message || 'Registration Failed');
         } finally {
             setLoading(false);
         }
@@ -64,7 +71,7 @@ const Login = () => {
                             </div>
                         </div>
                         <div className="mt-12 pt-12 border-t border-white/5">
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em]">Secure Access</p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em]">Institutional Secure Access</p>
                         </div>
                     </div>
                 </div>
@@ -72,46 +79,48 @@ const Login = () => {
                 {/* Form Side */}
                 <div className="w-full md:w-7/12 p-12 md:p-16">
                     <div className="mb-10">
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">System Authorization</h2>
-                        <p className="text-slate-500 text-sm mt-2 font-medium italic">Please select your access tier to initialize session.</p>
+                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Create Account</h2>
+                        <p className="text-slate-500 text-sm mt-2 font-medium italic">Join the next-generation judicial support infrastructure.</p>
                     </div>
 
-                    <form onSubmit={handleLogin} className="space-y-8">
+                    <form onSubmit={handleRegister} className="space-y-6">
                         <div className="grid grid-cols-3 gap-4">
                             <RoleTab active={role === 'judge'} onClick={() => setRole('judge')} icon={<Gavel className="w-5 h-5" />} label="Judge" />
                             <RoleTab active={role === 'lawyer'} onClick={() => setRole('lawyer')} icon={<Briefcase className="w-5 h-5" />} label="Lawyer" />
                             <RoleTab active={role === 'citizen'} onClick={() => setRole('citizen')} icon={<UserIcon className="w-5 h-5" />} label="Citizen" />
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="relative group">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Central Identifier</label>
-                                <div className="relative">
-                                    <AtSign className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                                    <input
-                                        type="text"
-                                        value={username}
-                                        onChange={e => setUsername(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-600 transition-all font-medium"
-                                        placeholder="Enter registered ID..."
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <div className="relative group">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Secure Token</label>
-                                <div className="relative">
-                                    <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                                    <input
-                                        type="password"
-                                        value={password}
-                                        onChange={e => setPassword(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-600 transition-all font-medium"
-                                        placeholder="••••••••"
-                                        required
-                                    />
-                                </div>
-                            </div>
+                        <div className="space-y-4">
+                            <InputField
+                                label="Full Name"
+                                icon={<UserIcon className="w-4 h-4" />}
+                                value={fullName}
+                                onChange={e => setFullName(e.target.value)}
+                                placeholder="Enter your full name..."
+                            />
+                            <InputField
+                                label="Registered ID"
+                                icon={<AtSign className="w-4 h-4" />}
+                                value={username}
+                                onChange={e => setUsername(e.target.value)}
+                                placeholder="Choose a unique ID..."
+                            />
+                            <InputField
+                                label="Email Address"
+                                icon={<Mail className="w-4 h-4" />}
+                                type="email"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                placeholder="your@email.com"
+                            />
+                            <InputField
+                                label="Secure Token"
+                                icon={<Lock className="w-4 h-4" />}
+                                type="password"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                placeholder="••••••••"
+                            />
                         </div>
 
                         <button
@@ -123,7 +132,7 @@ const Login = () => {
                                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                             ) : (
                                 <>
-                                    Establish Link <ArrowRight className="w-5 h-5" />
+                                    Initialize Account <UserPlus className="w-5 h-5" />
                                 </>
                             )}
                         </button>
@@ -131,9 +140,9 @@ const Login = () => {
 
                     <div className="mt-8 text-center">
                         <p className="text-slate-500 text-sm font-medium">
-                            Don't have an account? {' '}
-                            <Link to="/register" className="text-blue-600 font-bold hover:underline">
-                                Register Here
+                            Already have an account? {' '}
+                            <Link to="/login" className="text-blue-600 font-bold hover:underline">
+                                Login Here
                             </Link>
                         </p>
                     </div>
@@ -143,19 +152,38 @@ const Login = () => {
     );
 };
 
+const InputField = ({ label, icon, value, onChange, placeholder, type = "text" }) => (
+    <div className="relative group">
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">{label}</label>
+        <div className="relative">
+            <div className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
+                {icon}
+            </div>
+            <input
+                type={type}
+                value={value}
+                onChange={onChange}
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-600 transition-all font-medium"
+                placeholder={placeholder}
+                required
+            />
+        </div>
+    </div>
+);
+
 const RoleTab = ({ active, onClick, icon, label }) => (
     <button
         type="button"
         onClick={onClick}
-        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 group relative overflow-hidden ${active ? 'border-blue-600 bg-blue-50/50 shadow-inner' : 'border-slate-100 bg-white hover:border-slate-200'
+        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 group relative overflow-hidden ${active ? 'border-blue-600 bg-blue-50/50 shadow-inner' : 'border-slate-100 bg-white hover:border-slate-200'
             }`}
     >
         {active && <motion.div layoutId="roleGlow" className="absolute inset-0 bg-blue-400/5 blur-xl -z-10" />}
-        <div className={`p-2.5 rounded-xl transition-all ${active ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400 group-hover:text-slate-600'}`}>
+        <div className={`p-2 rounded-xl transition-all ${active ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400 group-hover:text-slate-600'}`}>
             {icon}
         </div>
-        <span className={`text-[10px] font-black uppercase tracking-widest ${active ? 'text-blue-700' : 'text-slate-400'}`}>{label}</span>
+        <span className={`text-[9px] font-black uppercase tracking-widest ${active ? 'text-blue-700' : 'text-slate-400'}`}>{label}</span>
     </button>
 );
 
-export default Login;
+export default Register;

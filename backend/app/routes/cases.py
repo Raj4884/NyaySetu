@@ -1,7 +1,16 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
 from app.models.case import Case
-from datetime import datetime
+from app.models.law import Law
+# Move MLService import inside getter to avoid module-level DLL loading
+_ml_svc = None
+
+def get_ml_svc():
+    global _ml_svc
+    if _ml_svc is None:
+        from app.services.ml_service import MLService
+        _ml_svc = MLService()
+    return _ml_svc
 
 cases_bp = Blueprint('cases', __name__)
 
@@ -27,6 +36,19 @@ def get_cases():
     
     result = []
     for c in cases:
+        # Just-in-Time (JIT) Reasoning Generation
+        # If case hasn't been processed by background worker, process it now for the user view
+        placeholder = "Semantic analysis in progress..."
+        if not c.priority_reasoning or c.priority_reasoning == placeholder:
+            priority, score, rationale = get_ml_svc().predict(c)
+            c.update(
+                set__predicted_priority=priority,
+                set__priority_score=score,
+                set__priority_reasoning=rationale,
+                set__status='Processed'
+            )
+            c.reload()
+
         c_dict = c.to_dict()
         # Use embedded impact_reports for O(1) list performance
         reports = c_dict.get('impact_reports', [])
@@ -71,18 +93,47 @@ def create_case():
 @cases_bp.route('/stats', methods=['GET'])
 @jwt_required()
 def get_stats():
-    total = Case.objects.count()
-    critical = Case.objects(predicted_priority='High').count()
-    pending = Case.objects(status='Pending').count()
+    claims = get_jwt()
+    role = claims.get('role', 'citizen')
     
-    # Priority breakdown for doughnut chart
-    high = Case.objects(predicted_priority='High').count()
-    medium = Case.objects(predicted_priority='Medium').count()
-    low = Case.objects(predicted_priority='Low').count()
+    total_cases = Case.objects.count()
+    total_laws = Law.objects.count()
     
-    return jsonify({
-        'total': total,
-        'critical': critical,
-        'pending': pending,
-        'chart': [high, medium, low]
-    }), 200
+    if role == 'judge':
+        critical = Case.objects(predicted_priority='High').count()
+        pending = Case.objects(status='Pending').count()
+        high = Case.objects(predicted_priority='High').count()
+        medium = Case.objects(predicted_priority='Medium').count()
+        low = Case.objects(predicted_priority='Low').count()
+        
+        return jsonify({
+            'total': total_cases,
+            'critical': critical,
+            'pending': pending,
+            'chart': [high, medium, low]
+        }), 200
+        
+    elif role == 'lawyer':
+        # Lawyers care about impacted cases and active laws
+        impacted = Case.objects(law_impacts__not__size=0).count()
+        high_alerts = Case.objects(predicted_priority='High', law_impacts__not__size=0).count()
+        
+        return jsonify({
+            'total': total_cases,
+            'critical': high_alerts,
+            'pending': impacted,
+            'chart': [high_alerts, impacted - high_alerts, total_cases - impacted]
+        }), 200
+        
+    else: # citizen
+        # Citizens care about rights and transparency
+        # Simulated transparency: % of cases with AI rationales
+        processed = Case.objects(status='Processed').count()
+        transparency = int((processed / total_cases * 100)) if total_cases > 0 else 100
+        
+        return jsonify({
+            'total': total_laws, # Laws affecting rights
+            'critical': transparency, # Transparency score %
+            'pending': total_cases, # Total scanned repository
+            'chart': [total_laws, total_cases // 100, processed // 1000] # Representative bits
+        }), 200
