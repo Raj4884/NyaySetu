@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from datetime import datetime
 from flask_jwt_extended import jwt_required, get_jwt
 from app.models.case import Case
 from app.models.law import Law
@@ -78,6 +79,8 @@ def create_case():
         title=data['title'],
         description=data.get('description'),
         filing_date=datetime.fromisoformat(data['filing_date']),
+        court_type=data.get('court_type', 'District Court'),
+        court_name=data.get('court_name'),
         urgency=data.get('urgency', 'Medium'),
         number_of_evidence=data.get('number_of_evidence', 0),
         hearing_count=data.get('hearing_count', 0)
@@ -93,15 +96,37 @@ def create_case():
 @cases_bp.route('/stats', methods=['GET'])
 @jwt_required()
 def get_stats():
+    from datetime import datetime, timedelta
     claims = get_jwt()
     role = claims.get('role', 'citizen')
     
     total_cases = Case.objects.count()
     total_laws = Law.objects.count()
     
+    # Calculate pending metrics for all roles
+    total_pending = Case.objects(status='Pending').count()
+    pending_cases = Case.objects(status='Pending')
+    
+    # Calculate average pendency (days in pending status)
+    if total_pending > 0:
+        today = datetime.utcnow()
+        total_days = 0
+        for case in pending_cases:
+            days_pending = (today - case.filing_date).days
+            total_days += days_pending
+        avg_pendency = total_days // total_pending
+    else:
+        avg_pendency = 0
+    
+    court_dist = {
+        'Supreme Court': Case.objects(court_type='Supreme Court').count(),
+        'High Court': Case.objects(court_type='High Court').count(),
+        'District Court': Case.objects(court_type='District Court').count(),
+        'Session Court': Case.objects(court_type='Session Court').count()
+    }
+    
     if role == 'judge':
         critical = Case.objects(predicted_priority='High').count()
-        pending = Case.objects(status='Pending').count()
         high = Case.objects(predicted_priority='High').count()
         medium = Case.objects(predicted_priority='Medium').count()
         low = Case.objects(predicted_priority='Low').count()
@@ -109,8 +134,10 @@ def get_stats():
         return jsonify({
             'total': total_cases,
             'critical': critical,
-            'pending': pending,
-            'chart': [high, medium, low]
+            'pending': total_pending,
+            'avg_pendency': avg_pendency,
+            'chart': [high, medium, low],
+            'court_distribution': court_dist
         }), 200
         
     elif role == 'lawyer':
@@ -121,8 +148,10 @@ def get_stats():
         return jsonify({
             'total': total_cases,
             'critical': high_alerts,
-            'pending': impacted,
-            'chart': [high_alerts, impacted - high_alerts, total_cases - impacted]
+            'pending': total_pending,
+            'avg_pendency': avg_pendency,
+            'chart': [high_alerts, impacted - high_alerts, total_cases - impacted],
+            'court_distribution': court_dist
         }), 200
         
     else: # citizen
@@ -134,6 +163,8 @@ def get_stats():
         return jsonify({
             'total': total_laws, # Laws affecting rights
             'critical': transparency, # Transparency score %
-            'pending': total_cases, # Total scanned repository
-            'chart': [total_laws, total_cases // 100, processed // 1000] # Representative bits
+            'pending': total_pending,
+            'avg_pendency': avg_pendency,
+            'chart': [total_laws, total_cases // 100, processed // 1000], # Representative bits
+            'court_distribution': court_dist
         }), 200

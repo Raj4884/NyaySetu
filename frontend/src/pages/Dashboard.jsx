@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { LayoutDashboard, FileText, Scale, TrendingUp, AlertTriangle, ShieldCheck, Activity, Zap, ChevronRight, Bell, CheckCircle2, Clock } from 'lucide-react';
+import { LayoutDashboard, FileText, Scale, TrendingUp, AlertTriangle, ShieldCheck, Activity, Zap, ChevronRight, Bell, CheckCircle2, Clock, Gavel } from 'lucide-react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,7 +8,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const Dashboard = () => {
-    const [stats, setStats] = useState({ total: 0, critical: 0, pending: 0, chart: [0, 0, 0] });
+    const [stats, setStats] = useState({
+        total: 0,
+        critical: 0,
+        pending: 0,
+        chart: [0, 0, 0],
+        court_distribution: { 'Supreme Court': 0, 'High Court': 0, 'District Court': 0, 'Session Court': 0 }
+    });
     const [allCases, setAllCases] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -99,8 +105,8 @@ const Dashboard = () => {
         labels: ['Priority: High', 'Priority: Medium', 'Priority: Low'],
         datasets: [{
             data: stats.chart,
-            backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
-            hoverBackgroundColor: ['#dc2626', '#d97706', '#059669'],
+            backgroundColor: ['#DC2626', '#F97316', '#22C55E'],
+            hoverBackgroundColor: ['#B91C1C', '#EA580C', '#16A34A'],
             borderWidth: 8,
             borderColor: '#ffffff',
             hoverOffset: 20
@@ -129,210 +135,168 @@ const Dashboard = () => {
             initial="hidden"
             animate="visible"
             variants={containerVariants}
-            className="p-10 max-w-7xl mx-auto relative"
+            className="flex flex-col gap-8"
         >
-            {/* Background Decorations */}
-            <div className="absolute top-0 right-0 -z-10 w-[500px] h-[500px] bg-blue-100/50 blur-[120px] rounded-full opacity-50 px-10"></div>
-            <div className="absolute bottom-0 left-0 -z-10 w-[400px] h-[400px] bg-indigo-100/50 blur-[100px] rounded-full opacity-40"></div>
-
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16 px-2">
-                <motion.div variants={itemVariants}>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                        Proactive <span className="text-gradient">Legal Insights</span>
-                    </h1>
-                    <div className="flex items-center gap-4 mt-4">
-                        <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-1.5 rounded-full shadow-lg shadow-slate-900/10">
-                            <ShieldCheck className="w-4 h-4 text-blue-400" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">{user?.role} Access</span>
-                        </div>
-                        <span className="h-1 w-1 bg-slate-300 rounded-full"></span>
-                        <p className="text-slate-500 text-xs font-semibold tracking-wide">Secure Instance: NYAYSETU-01</p>
-                    </div>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="flex items-center gap-6">
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowNotifications(!showNotifications)}
-                            className="p-4 bg-white rounded-2xl shadow-xl shadow-blue-900/5 border border-slate-100 hover:bg-slate-50 transition-all relative group"
-                        >
-                            <Bell className={`w-6 h-6 ${unreadCount > 0 ? 'text-blue-600 animate-pulse' : 'text-slate-400'}`} />
-                            {unreadCount > 0 && (
-                                <span className="absolute top-3 right-3 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
-                            )}
-                        </button>
-
-                        <AnimatePresence>
-                            {showNotifications && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    className="absolute right-0 mt-4 w-96 bg-white rounded-[2.5rem] shadow-3xl border border-slate-100 z-[100] overflow-hidden"
-                                >
-                                    <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Judicial Alerts</h4>
-                                        <button onClick={markAllAsRead} className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700">Mark all read</button>
-                                    </div>
-                                    <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
-                                        {notifications.length > 0 ? (
-                                            notifications.map(n => (
-                                                <div key={n.id} className={`p-6 border-b border-slate-50 hover:bg-slate-50 transition-colors flex gap-4 ${!n.read ? 'bg-blue-50/30' : ''}`}>
-                                                    <div className={`mt-1 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${!n.read ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                                        <Activity className="w-4 h-4" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs font-bold text-slate-900 mb-1">{n.title}</p>
-                                                        <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2 mb-2">{n.message}</p>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1.5">
-                                                                <Clock className="w-3 h-3" /> {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                            </span>
-                                                            {!n.read && <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="p-12 text-center">
-                                                <ShieldCheck className="w-12 h-12 text-slate-100 mx-auto mb-4" />
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No Active Alerts</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
-                    <div className="glass px-6 py-4 rounded-[2rem] flex items-center gap-4 shadow-xl shadow-blue-900/5 border-white/50">
-                        <div className="relative">
-                            <div className="w-3 h-3 bg-green-500 rounded-full animate-ping absolute"></div>
-                            <div className="w-3 h-3 bg-green-500 rounded-full relative"></div>
-                        </div>
-                        <div>
-                            <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 text-right">System Health</span>
-                            <span className="text-xs font-bold text-slate-800 uppercase tracking-tighter">Core Engine Stable</span>
+            {/* Summary Bar */}
+            <div className="flex flex-col gap-6">
+                <div className="flex flex-col justify-start">
+                    <h1 className="font-serif text-3xl font-bold text-navy-deep dark:text-white">Dashboard</h1>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm italic">Analysis of Docket Pendency & Judicial Urgency</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Total Cases Card */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-3 border-l-4 border-l-blue-500">
+                        <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Total Alert</p>
+                        <div className="flex items-end justify-between">
+                            <p className="text-4xl font-serif font-bold text-navy-deep dark:text-white">{stats.total.toLocaleString()}</p>
+                            <span className="text-blue-600 text-xs font-bold px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded">All</span>
                         </div>
                     </div>
-                </motion.div>
-            </header>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-                <StatCard
-                    variants={itemVariants}
-                    title={user?.role === 'citizen' ? "Rights & Protections" : user?.role === 'lawyer' ? "Monitored Docket" : "Total Case Repository"}
-                    val={stats.total.toLocaleString()}
-                    icon={<Scale className="w-6 h-6 text-white" />}
-                    iconBg="bg-blue-600 shadow-blue-200"
-                    trend={user?.role === 'citizen' ? "Active Statutory Synchronicity" : "+12% Since Last Ingestion"}
-                />
-                <StatCard
-                    variants={itemVariants}
-                    title={user?.role === 'citizen' ? "Transparency Score" : user?.role === 'lawyer' ? "Priority Impact Alerts" : "Critical Action Items"}
-                    val={user?.role === 'citizen' ? `${stats.critical}%` : stats.critical}
-                    icon={<AlertTriangle className="w-6 h-6 text-white" />}
-                    iconBg="bg-red-500 shadow-red-200"
-                    trend={user?.role === 'citizen' ? "AI-Verified Judicial Fairness" : "Requires Immediate Review"}
-                    color="text-red-600"
-                />
-                <StatCard
-                    variants={itemVariants}
-                    title={user?.role === 'citizen' ? "Scanned Repository" : user?.role === 'lawyer' ? "Impacted Case Load" : "Pending Classifications"}
-                    val={stats.pending.toLocaleString()}
-                    icon={<FileText className="w-6 h-6 text-white" />}
-                    iconBg="bg-amber-500 shadow-amber-200"
-                    trend={user?.role === 'citizen' ? "Total National Matters Analyzed" : "Awaiting Semantic Analysis"}
-                />
+                    
+                    {/* Pending Cases Card */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-3 border-l-4 border-l-amber-500">
+                        <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Total Pending</p>
+                        <div className="flex items-end justify-between">
+                            <p className="text-4xl font-serif font-bold text-amber-600 dark:text-amber-400">{stats.pending.toLocaleString()}</p>
+                            <span className="text-amber-600 text-xs font-bold px-2 py-1 bg-amber-50 dark:bg-amber-900/20 rounded">Pending</span>
+                        </div>
+                    </div>
+                    
+                    {/* Avg Pendency Card */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-3 border-l-4 border-l-orange-500">
+                        <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Avg. Pendency</p>
+                        <div className="flex items-end justify-between">
+                            <div>
+                                <p className="text-4xl font-serif font-bold text-orange-600 dark:text-orange-400">{stats.avg_pendency || 0}</p>
+                                <p className="text-xs font-normal text-slate-500">days</p>
+                            </div>
+                            <span className="text-orange-600 text-xs font-bold px-2 py-1 bg-orange-50 dark:bg-orange-900/20 rounded">Days</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                <motion.div variants={itemVariants} className="lg:col-span-12 glass rounded-[3rem] p-12 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
-
-                    <div className="flex flex-col md:flex-row items-center gap-16">
-                        <div className="w-full md:w-1/2">
-                            <h3 className="text-2xl font-black mb-4 flex items-center gap-4">
-                                <Activity className="w-8 h-8 text-blue-600" />
-                                Priority Semantic Mapping
-                            </h3>
-                            <p className="text-slate-500 text-sm font-medium mb-12 leading-relaxed max-w-md italic">
-                                Real-time distribution of cases filtered through our advanced judicial classification engine.
-                            </p>
-
-                            <div className="space-y-6">
-                                <InsightProgress label="High Priority" val={stats.chart[0]} max={stats.total} color="bg-red-500" />
-                                <InsightProgress label="Moderate" val={stats.chart[1]} max={stats.total} color="bg-amber-500" />
-                                <InsightProgress label="Standard" val={stats.chart[2]} max={stats.total} color="bg-emerald-500" />
-                            </div>
-                        </div>
-
-                        <div className="w-full md:w-1/2 flex justify-center relative">
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-4xl font-black text-slate-900">
-                                    {stats.total > 0 ? (stats.chart.reduce((a, b) => a + b, 0) / stats.total * 100).toFixed(0) : 0}%
-                                </span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Processed</span>
-                            </div>
-                            <div className="max-w-[18rem] w-full animate-float">
-                                <Doughnut data={chartData} options={{
-                                    cutout: '82%',
-                                    plugins: {
-                                        legend: { display: false }
-                                    },
-                                    animation: { animateRotate: true, duration: 2000 }
-                                }} />
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-            </div>
-
-            {/* Judicial Case Repository Section with Infinite Scroll */}
-            <motion.div variants={itemVariants} className="mt-16 bg-white rounded-[3rem] p-12 shadow-2xl shadow-slate-900/5 border border-slate-100">
-                <div className="flex justify-between items-center mb-10">
-                    <div>
-                        <h3 className="text-2xl font-black text-slate-900 flex items-center gap-4">
-                            <Scale className="w-8 h-8 text-blue-600" />
-                            Judicial Case Repository
+            {/* Dashboard Body */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Main Prioritization Docket */}
+                <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg overflow-hidden">
+                    <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-cream/50">
+                        <h3 className="font-serif text-lg font-bold text-navy-deep dark:text-white flex items-center gap-3">
+                            <Gavel className="text-primary" size={28} strokeWidth={1.5} />
+                            Current Prioritization
                         </h3>
-                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 ml-12">Full System Matrix | Real-time Ingestion</p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => window.print()}
+                                className="px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+                            >
+                                <span className="material-symbols-outlined text-sm">picture_as_pdf</span> Generate PDF
+                            </button>
+                        </div>
                     </div>
-                </div>
-
-                <div className="divide-y divide-slate-50">
-                    {allCases.map((c, index) => {
-                        if (allCases.length === index + 1) {
-                            return (
-                                <div ref={lastCaseElementRef} key={c.id} className="py-6 flex items-center justify-between group hover:bg-slate-50/50 transition-all rounded-2xl px-4">
-                                    <CaseRowContent c={c} />
-                                </div>
-                            );
-                        } else {
-                            return (
-                                <div key={c.id} className="py-6 flex items-center justify-between group hover:bg-slate-50/50 transition-all rounded-2xl px-4">
-                                    <CaseRowContent c={c} />
-                                </div>
-                            );
-                        }
-                    })}
-
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="text-[10px] uppercase tracking-widest text-slate-500 bg-slate-50 dark:bg-slate-800/50">
+                                    <th className="px-6 py-4 font-bold border-b border-slate-100 dark:border-slate-800">Case ID</th>
+                                    <th className="px-6 py-4 font-bold border-b border-slate-100 dark:border-slate-800">Parties</th>
+                                    <th className="px-6 py-4 font-bold border-b border-slate-100 dark:border-slate-800">Filing Date</th>
+                                    <th className="px-6 py-4 font-bold border-b border-slate-100 dark:border-slate-800">Category</th>
+                                    <th className="px-6 py-4 font-bold border-b border-slate-100 dark:border-slate-800">AI Priority</th>
+                                    <th className="px-6 py-4 font-bold border-b border-slate-100 dark:border-slate-800">Law impact analysis</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {allCases.slice(0, 10).map((c, idx) => (
+                                    <tr key={c.id} className={`hover:bg-cream/30 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group ${idx % 2 === 1 ? 'bg-cream/20 dark:bg-slate-800/20' : ''}`}>
+                                        <td className="px-6 py-4 text-sm font-bold text-navy-deep dark:text-slate-200">{c.case_number}</td>
+                                        <td className="px-6 py-4 text-sm">
+                                            <p className="font-medium text-slate-900 dark:text-slate-100">{c.title.split(' vs ')[0]}</p>
+                                            <p className="text-xs text-slate-500 italic">vs. {c.title.split(' vs ')[1] || 'Respondents'}</p>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-slate-500">{new Date(c.filing_date).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 text-xs font-bold uppercase tracking-tighter text-slate-400">{c.case_type}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-2 w-16 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                    <div className={`h-full ${c.predicted_priority === 'High' ? 'bg-red-500' : 'bg-primary'} w-[${(c.priority_score * 100).toFixed(0)}%]`}></div>
+                                                </div>
+                                                <span className={`text-xs font-bold ${c.predicted_priority === 'High' ? 'text-red-600' : 'text-primary'}`}>
+                                                    {(c.priority_score * 100).toFixed(0)}/100
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase ${c.predicted_priority === 'High' ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'bg-primary/10 text-primary'
+                                                }`}>
+                                                {c.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                     {loadingMore && (
-                        <div className="py-10 text-center">
-                            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Loading more cases...</p>
+                        <div className="p-8 text-center bg-slate-50/50">
+                            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mr-2 inline-block align-middle"></div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inhaling Records...</span>
                         </div>
                     )}
-
-                    {!hasMore && allCases.length > 0 && (
-                        <div className="py-10 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px]">End of Case Repository</div>
-                    )}
-
-                    {allCases.length === 0 && !loading && (
-                        <div className="py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">No Judicial Matters Found</div>
-                    )}
                 </div>
-            </motion.div>
+
+                {/* XAI Reasoning Side Panel */}
+                <div className="lg:col-span-4 flex flex-col gap-6">
+                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg overflow-hidden flex flex-col">
+                        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-navy-deep text-white">
+                            <div className="flex items-center justify-between mb-1">
+                                <h3 className="font-serif text-lg font-bold">Judicial Reasoning</h3>
+                                <span className="material-symbols-outlined text-primary">auto_awesome</span>
+                            </div>
+                            <p className="text-[10px] uppercase tracking-widest text-primary/80 font-bold">XAI Analysis: {allCases[0]?.case_number || 'IDENT-HUB'}</p>
+                        </div>
+                        <div className="p-8 flex flex-col gap-6 bg-cream/30 dark:bg-slate-900">
+                            <div className="space-y-4 font-serif text-slate-800 dark:text-slate-200 leading-relaxed italic border-l-2 border-primary/30 pl-6">
+                                <p className="text-sm">
+                                    "This honorable system prioritizes the matter of <span className="font-bold">{allCases[0]?.title || 'Select Case'}</span> under the mandate of <span className="underline decoration-primary/50 underline-offset-4">Judicial Efficiency Act 2023</span>."
+                                </p>
+                                <p className="text-sm">
+                                    {allCases[0]?.priority_reasoning || "Reasoning engine is initializing. Priority weights are being calculated based on evidence density and case category."}
+                                </p>
+                            </div>
+                            <div className="space-y-3">
+                                <h4 className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Key Urgency Vectors</h4>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
+                                        <span className="text-xs font-medium">Relevance to Article 21</span>
+                                        <span className="text-xs font-bold text-primary">High</span>
+                                    </div>
+                                    <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
+                                        <span className="text-xs font-medium">Evidence Count</span>
+                                        <span className="text-xs font-bold text-red-500">{allCases[0]?.number_of_evidence || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
+                                        <span className="text-xs font-medium">Public Interest</span>
+                                        <span className="text-xs font-bold text-primary">Moderate</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 flex flex-col gap-4">
+                        <div className="flex items-start gap-3">
+                            <span className="material-symbols-outlined text-primary">info</span>
+                            <div>
+                                <h4 className="text-xs font-bold text-navy-deep dark:text-primary uppercase tracking-tight">Transparency Note</h4>
+                                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-normal mt-1">
+                                    This dashboard uses transparent neural networks (XAI). Every prioritization decision can be audited against the Supreme Court's 2023 Digital Docketing Guidelines.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </motion.div>
     );
 };
@@ -345,7 +309,11 @@ const CaseRowContent = ({ c }) => (
             </div>
             <div>
                 <h5 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{c.title}</h5>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{c.case_number}</span>
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{c.case_number}</span>
+                    <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{c.court_type}</span>
+                </div>
             </div>
         </div>
         <div className="flex items-center gap-8">

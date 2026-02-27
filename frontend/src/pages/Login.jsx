@@ -20,93 +20,115 @@ const Login = () => {
             localStorage.setItem('user', JSON.stringify(data.user));
             navigate('/');
         } catch (err) {
-            alert('Authentication Failed');
+            alert(err.response?.data?.message || 'Authentication Failed. Please check your credentials.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-6 bg-[#F8FAFC] relative overflow-hidden font-['Outfit']">
-            {/* Background Mesh */}
-            <div className="absolute top-0 right-0 -z-10 w-[600px] h-[600px] bg-blue-100/50 blur-[130px] rounded-full opacity-60"></div>
-            <div className="absolute bottom-0 left-0 -z-10 w-[500px] h-[500px] bg-indigo-100/50 blur-[120px] rounded-full opacity-50"></div>
+        <div className="min-h-screen flex items-center justify-center p-6 bg-cream/30 dark:bg-slate-950 relative overflow-hidden font-['Public_Sans']">
+            {/* Background Texture */}
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/notebook.png')] opacity-20 pointer-events-none"></div>
 
             <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5 }}
-                className="w-full max-w-[1000px] flex flex-col md:flex-row bg-white rounded-[3rem] shadow-3xl overflow-hidden border border-white/20 relative z-10"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="w-full max-w-[1400px] flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-2xl shadow-3xl overflow-hidden border border-slate-200 dark:border-slate-800 relative z-10"
             >
-                {/* Brand Side */}
-                <div className="w-full md:w-5/12 bg-slate-900 p-12 text-white relative overflow-hidden flex flex-col justify-between">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 blur-[100px] rounded-full -mr-32 -mt-32"></div>
+                {/* Brand Side (Navy/Gold) */}
+                <div className="w-full md:w-5/12 bg-navy-deep p-16 text-white relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 blur-[100px] rounded-full -mr-40 -mt-40"></div>
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 blur-[80px] rounded-full -ml-32 -mb-32"></div>
 
                     <div className="relative z-10">
-                        <div className="bg-blue-600 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/30 mb-8">
-                            <Shield className="w-8 h-8 text-white" />
+                        <div className="flex items-center gap-3 mb-10">
+                            <div className="bg-primary/30 p-3 rounded-lg border-2 border-primary">
+                                <span className="material-symbols-outlined text-primary text-4xl">gavel</span>
+                            </div>
+                            <h1 className="font-serif text-3xl font-bold tracking-tight">Nyay<span className="text-primary italic">Setu</span></h1>
                         </div>
-                        <h1 className="text-4xl font-black tracking-tight leading-tight">Nyay<span className="text-blue-500">Setu</span></h1>
-                        <p className="text-slate-400 mt-4 font-medium text-sm leading-relaxed max-w-xs">
-                            Proactive Legal Insights & Case Prioritization System.
+
+                        <h2 className="font-serif text-4xl font-bold leading-tight mb-6">
+                            Justice <br />
+                            <span className="text-primary italic">Synchronized</span>
+                        </h2>
+
+                        <p className="text-slate-400 font-serif italic text-lg leading-relaxed max-w-xs border-l border-primary/30 pl-6">
+                            "Empowering the judiciary with semantic intelligence and case prioritization for a swifter tomorrow."
                         </p>
                     </div>
 
-                    <div className="relative z-10 mt-20">
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-4">
-                                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-white/10 uppercase text-[10px] font-black text-blue-400">01</div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Case Prioritization</p>
+                    <div className="relative z-10 mt-12 space-y-8">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4 group cursor-default">
+                                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors">
+                                    <span className="material-symbols-outlined text-sm text-primary">priority_high</span>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">Intelligent Prioritization</p>
+                                    <p className="text-[9px] text-slate-500 font-serif italic">Semantic Case Ranking Engine</p>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-white/10 uppercase text-[10px] font-black text-blue-400">02</div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Law Impact Sync</p>
+                            <div className="flex items-center gap-4 group cursor-default">
+                                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors">
+                                    <span className="material-symbols-outlined text-sm text-primary">analytics</span>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">Statutory Sync</p>
+                                    <p className="text-[9px] text-slate-500 font-serif italic">Real-time Law Impact Analysis</p>
+                                </div>
                             </div>
                         </div>
-                        <div className="mt-12 pt-12 border-t border-white/5">
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em]">Secure Access</p>
+
+                        <div className="pt-8 border-t border-white/5 flex items-center gap-3 opacity-60">
+                            <span className="material-symbols-outlined text-xs">verified_user</span>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em]">Judiciary Grade Authorization</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Form Side */}
-                <div className="w-full md:w-7/12 p-12 md:p-16">
-                    <div className="mb-10">
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">System Authorization</h2>
-                        <p className="text-slate-500 text-sm mt-2 font-medium italic">Please select your access tier to initialize session.</p>
+                {/* Form and Status Side */}
+                <div className="w-full md:w-7/12 flex flex-col md:flex-row">
+                    {/* Form Section */}
+                    <div className="w-full p-12 md:p-20 flex flex-col justify-center bg-cream/20 dark:bg-slate-900 border-l border-slate-100 dark:border-slate-800">
+                    <div className="mb-12">
+                        <h3 className="font-serif text-3xl font-bold text-navy-deep dark:text-white mb-2">System Authorization</h3>
+                        <p className="text-slate-500 text-lg font-serif italic">Specify your jurisdictional role to initialize the session.</p>
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-8">
                         <div className="grid grid-cols-3 gap-4">
-                            <RoleTab active={role === 'judge'} onClick={() => setRole('judge')} icon={<Gavel className="w-5 h-5" />} label="Judge" />
-                            <RoleTab active={role === 'lawyer'} onClick={() => setRole('lawyer')} icon={<Briefcase className="w-5 h-5" />} label="Lawyer" />
-                            <RoleTab active={role === 'citizen'} onClick={() => setRole('citizen')} icon={<UserIcon className="w-5 h-5" />} label="Citizen" />
+                            <RoleTab active={role === 'judge'} onClick={() => setRole('judge')} icon="gavel" label="Judge" />
+                            <RoleTab active={role === 'lawyer'} onClick={() => setRole('lawyer')} icon="work" label="Lawyer" />
+                            <RoleTab active={role === 'citizen'} onClick={() => setRole('citizen')} icon="person" label="Citizen" />
                         </div>
 
                         <div className="space-y-6">
-                            <div className="relative group">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Central Identifier</label>
-                                <div className="relative">
-                                    <AtSign className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block">Central Identification Number</label>
+                                <div className="relative group">
+                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors text-xl">badge</span>
                                     <input
                                         type="text"
                                         value={username}
                                         onChange={e => setUsername(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-600 transition-all font-medium"
-                                        placeholder="Enter registered ID..."
+                                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-12 pr-4 py-4 text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-serif dark:text-white"
+                                        placeholder="Enter Registered ID..."
                                         required
                                     />
                                 </div>
                             </div>
-                            <div className="relative group">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Secure Token</label>
-                                <div className="relative">
-                                    <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block">Cryptographic Secure Token</label>
+                                <div className="relative group">
+                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors text-xl">key</span>
                                     <input
                                         type="password"
                                         value={password}
                                         onChange={e => setPassword(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-600 transition-all font-medium"
+                                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-12 pr-4 py-4 text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-serif dark:text-white"
                                         placeholder="••••••••"
                                         required
                                     />
@@ -114,28 +136,35 @@ const Login = () => {
                             </div>
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 h-16 rounded-[1.5rem] flex items-center justify-center gap-3 text-white font-black text-sm uppercase tracking-widest shadow-2xl shadow-blue-600/30 hover:shadow-indigo-600/40 hover:-translate-y-1 transition-all active:scale-95 disabled:opacity-50"
-                        >
-                            {loading ? (
-                                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            ) : (
-                                <>
-                                    Establish Link <ArrowRight className="w-5 h-5" />
-                                </>
-                            )}
-                        </button>
-                    </form>
+                        <div className="flex flex-col gap-6">
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-navy-deep h-14 rounded-lg flex items-center justify-center gap-3 text-white font-bold text-[11px] uppercase tracking-[0.2em] shadow-xl hover:bg-slate-800 hover:shadow-primary/10 transition-all active:scale-[0.98] disabled:opacity-50 border border-primary/20"
+                            >
+                                {loading ? (
+                                    <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                                ) : (
+                                    <>
+                                        Establish Link <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                    </>
+                                )}
+                            </button>
 
-                    <div className="mt-8 text-center">
-                        <p className="text-slate-500 text-sm font-medium">
-                            Don't have an account? {' '}
-                            <Link to="/register" className="text-blue-600 font-bold hover:underline">
-                                Register Here
+                            <div className="flex items-center justify-center gap-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 px-4">
+                                <div className="h-[1px] bg-slate-200 dark:bg-slate-800 flex-grow"></div>
+                                <span>OR</span>
+                                <div className="h-[1px] bg-slate-200 dark:bg-slate-800 flex-grow"></div>
+                            </div>
+
+                            <Link
+                                to="/register"
+                                className="w-full h-14 rounded-lg flex items-center justify-center gap-3 text-navy-deep dark:text-primary font-bold text-[11px] uppercase tracking-[0.2em] border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                            >
+                                Register New Profile <span className="material-symbols-outlined text-sm">person_add</span>
                             </Link>
-                        </p>
+                        </div>
+                    </form>
                     </div>
                 </div>
             </motion.div>
@@ -147,14 +176,17 @@ const RoleTab = ({ active, onClick, icon, label }) => (
     <button
         type="button"
         onClick={onClick}
-        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 group relative overflow-hidden ${active ? 'border-blue-600 bg-blue-50/50 shadow-inner' : 'border-slate-100 bg-white hover:border-slate-200'
+        className={`p-4 rounded-lg border transition-all flex flex-col items-center gap-3 group relative overflow-hidden ${active
+                ? 'border-primary bg-primary/5 shadow-inner'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-primary/50'
             }`}
     >
-        {active && <motion.div layoutId="roleGlow" className="absolute inset-0 bg-blue-400/5 blur-xl -z-10" />}
-        <div className={`p-2.5 rounded-xl transition-all ${active ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400 group-hover:text-slate-600'}`}>
-            {icon}
+        <div className={`transition-all ${active ? 'text-primary' : 'text-slate-400 group-hover:text-primary'}`}>
+            <span className="material-symbols-outlined text-2xl">{icon}</span>
         </div>
-        <span className={`text-[10px] font-black uppercase tracking-widest ${active ? 'text-blue-700' : 'text-slate-400'}`}>{label}</span>
+        <span className={`text-[9px] font-bold uppercase tracking-widest ${active ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'}`}>
+            {label}
+        </span>
     </button>
 );
 

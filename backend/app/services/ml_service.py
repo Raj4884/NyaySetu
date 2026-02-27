@@ -27,6 +27,7 @@ class MLService:
         """
         Engineered for high-volume ingestion: 
         Process multiple cases simultaneously using vectorized inference.
+        Now includes court-level prioritization.
         """
         if not self.model or not self.encoder:
             return [self._fallback_predict(c) for c in cases]
@@ -61,9 +62,19 @@ class MLService:
             
             results = []
             for i, score in enumerate(scores):
-                total_score = max(0, min(0.99, float(score)))
+                # 3. Court-Level Augmentation
+                # Supreme Court and High Court cases get a priority boost
+                court_boost = 0
+                case_obj = cases[i]
+                if hasattr(case_obj, 'court_type'):
+                    if case_obj.court_type == 'Supreme Court':
+                        court_boost = 0.25
+                    elif case_obj.court_type == 'High Court':
+                        court_boost = 0.15
+                
+                total_score = max(0, min(0.99, float(score) + court_boost))
 
-                # 3. Map to Labels
+                # 4. Map to Labels
                 if total_score > 0.70:
                     priority = 'High'
                 elif total_score > 0.35:
@@ -71,7 +82,7 @@ class MLService:
                 else:
                     priority = 'Low'
                 
-                # 4. Generate Rationale
+                # 5. Generate Rationale
                 rationale = self._generate_detailed_rationale(
                     cases[i], 
                     case_types[i], 

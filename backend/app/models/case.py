@@ -29,6 +29,11 @@ class Case(Document):
     filing_date = DateTimeField(required=True)
     status = StringField(default='Pending')
     
+    # Detailed Court Info
+    court_type = StringField(choices=['Supreme Court', 'High Court', 'District Court', 'Session Court'], default='District Court')
+    court_name = StringField()
+    high_court_name = StringField()
+    
     # Metadata for AI
     urgency = StringField(choices=['High', 'Medium', 'Low'], default='Medium')
     number_of_evidence = IntField(default=0)
@@ -58,6 +63,9 @@ class Case(Document):
             'description': self.description,
             'filing_date': self.filing_date.isoformat(),
             'status': self.status,
+            'court_type': self.court_type,
+            'court_name': self.court_name,
+            'high_court_name': self.high_court_name,
             'urgency': self.urgency,
             'priority_score': self.priority_score,
             'predicted_priority': self.predicted_priority,

@@ -29,13 +29,30 @@ const Cases = () => {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [selectedCase, setSelectedCase] = useState(null);
+    const [statusFilter, setStatusFilter] = useState(''); // New status filter state
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [formLoading, setFormLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        case_number: '',
+        case_type: 'Civil',
+        title: '',
+        description: '',
+        filing_date: new Date().toISOString().split('T')[0],
+        court_type: 'District Court',
+        court_name: '',
+        urgency: 'Medium',
+        number_of_evidence: 0
+    });
 
-    const fetchCases = async (pageNum = 1, shouldAppend = false) => {
+    const fetchCases = async (pageNum = 1, shouldAppend = false, status = '') => {
         try {
             if (shouldAppend) setLoadingMore(true);
             else setLoading(true);
 
-            const { data } = await axios.get(`/api/cases?limit=10`, {
+            const params = new URLSearchParams('?limit=10');
+            if (status) params.append('status', status);
+
+            const { data } = await axios.get(`/api/cases?${params.toString()}`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
 
@@ -49,8 +66,71 @@ const Cases = () => {
         }
     };
 
+    const handleStatusFilterChange = (status) => {
+        setStatusFilter(status);
+        setPage(1);
+        fetchCases(1, false, status);
+    };
+
+    const handleExport = () => {
+        if (cases.length === 0) return;
+
+        const headers = ["Case Number", "Title", "Type", "Filing Date", "Court Type", "Court Name", "Priority Score", "Predicted Priority"];
+        const csvRows = [
+            headers.join(','),
+            ...cases.map(c => [
+                `"${c.case_number}"`,
+                `"${c.title}"`,
+                `"${c.case_type}"`,
+                `"${new Date(c.filing_date).toLocaleDateString()}"`,
+                `"${c.court_type}"`,
+                `"${c.court_name || ''}"`,
+                `"${(c.priority_score * 100).toFixed(0)}"`,
+                `"${c.predicted_priority}"`
+            ].join(','))
+        ];
+
+        const csvContent = csvRows.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('hidden', '');
+        a.setAttribute('href', url);
+        a.setAttribute('download', `judicial_cases_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
+
+    const handleCreateCase = async (e) => {
+        e.preventDefault();
+        try {
+            setFormLoading(true);
+            const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
+            await axios.post('/api/cases', formData, config);
+            setShowCreateModal(false);
+            setFormData({
+                case_number: '',
+                case_type: 'Civil',
+                title: '',
+                description: '',
+                filing_date: new Date().toISOString().split('T')[0],
+                court_type: 'District Court',
+                court_name: '',
+                urgency: 'Medium',
+                number_of_evidence: 0
+            });
+            fetchCases(1, false, statusFilter);
+        } catch (err) {
+            console.error("Create Case Error:", err);
+            alert("Failed to file new case. Please check your permissions.");
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
     useEffect(() => {
-        fetchCases(1, false);
+        fetchCases(1, false, statusFilter);
     }, []);
 
     const loadMore = () => {
@@ -74,119 +154,154 @@ const Cases = () => {
             initial="hidden"
             animate="visible"
             variants={containerVariants}
-            className="p-10 max-w-7xl mx-auto relative"
+            className="flex flex-col gap-8"
         >
-            {/* Background Decorations */}
-            <div className="absolute top-0 right-0 -z-10 w-[400px] h-[400px] bg-blue-50/50 blur-[100px] rounded-full opacity-50 px-10"></div>
-
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 px-2">
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 px-2">
                 <motion.div variants={itemVariants}>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">
-                        Top 10 High <span className="text-gradient">Priority Identifications</span>
+                    <h1 className="font-serif text-3xl font-bold text-navy-deep dark:text-white">
+                        Judicial <span className="text-primary italic">Case Priotization</span>
                     </h1>
-                    <p className="text-slate-500 mt-2 font-medium flex items-center gap-2">
-                        <Scale className="w-4 h-4 text-blue-500" />
-                        AI-Augmented Judicial Pipeline
+                    <p className="text-slate-500 mt-1 text-sm italic flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary text-sm">analytics</span>
+                        AI-Augmented Ranking: Highest Priority Matters
                     </p>
                 </motion.div>
                 <motion.div variants={itemVariants} className="flex gap-4">
-                    <button className="px-6 py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+                    <button
+                        onClick={handleExport}
+                        className="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 font-bold text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm"
+                    >
                         <Download className="w-4 h-4" /> Export
                     </button>
-                    <button className="btn-primary flex items-center gap-2">
-                        <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" />
-                        File New Case
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="px-5 py-2.5 bg-primary text-white rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-primary/90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+                    >
+                        <Plus className="w-5 h-5" /> File New Case
                     </button>
                 </motion.div>
             </header>
 
-            <motion.div variants={itemVariants} className="glass rounded-[2.5rem] border-white/60 shadow-2xl shadow-slate-900/5 overflow-hidden">
-                <div className="p-8 border-b border-slate-100/50 bg-white/30 backdrop-blur-sm flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-blue-600/10 p-2.5 rounded-xl">
-                            <Filter className="w-5 h-5 text-blue-600" />
+            <motion.div variants={itemVariants} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 bg-cream/30 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-navy-deep p-2 rounded-lg">
+                                <span className="material-symbols-outlined text-primary">filter_list</span>
+                            </div>
+                            <h3 className="font-serif text-lg font-bold text-navy-deep dark:text-white">
+                                Master Priority Matrix
+                            </h3>
                         </div>
-                        <h3 className="font-black text-slate-800 uppercase tracking-widest text-[10px]">
-                            Advanced AI Ranking: Highest Priority Matters
-                        </h3>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => handleStatusFilterChange('')}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${statusFilter === ''
+                                    ? 'bg-primary text-white'
+                                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                                    }`}
+                            >
+                                All Cases
+                            </button>
+                            <button
+                                onClick={() => handleStatusFilterChange('Pending')}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${statusFilter === 'Pending'
+                                    ? 'bg-amber-500 text-white'
+                                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                                    }`}
+                            >
+                                Pending
+                            </button>
+                            <button
+                                onClick={() => handleStatusFilterChange('Processed')}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${statusFilter === 'Processed'
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                                    }`}
+                            >
+                                Processed
+                            </button>
+                        </div>
                     </div>
-                    <div className="relative w-full md:w-96">
-                        <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-sm outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium" placeholder="Search CNR, Petitioner or Respondent..." />
+                    <div className="relative w-full">
+                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                        <input className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-11 pr-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary transition-all font-medium" placeholder="Search CNR, Title or Court..." />
                     </div>
                 </div>
 
-                <div className="divide-y divide-slate-100/50">
-                    {loading && page === 1 ? (
-                        <div className="p-32 text-center">
-                            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-                            <div className="text-[10px] font-black text-slate-400 animate-pulse tracking-[0.3em] uppercase">Hydrating Data Grid...</div>
-                        </div>
-                    ) : (
-                        <>
-                            {cases.map((c, idx) => (
-                                <motion.div
-                                    key={c.id}
-                                    variants={itemVariants}
-                                    whileHover={{ backgroundColor: 'rgba(241, 245, 249, 0.5)' }}
-                                    onClick={() => setSelectedCase(c)}
-                                    className="p-8 flex flex-col md:flex-row items-center justify-between group cursor-pointer transition-all gap-8"
-                                >
-                                    <div className="flex items-center gap-8 w-full md:w-auto">
-                                        <div className="relative">
-                                            <div className={`w-4 h-4 rounded-full ${c.predicted_priority === 'High' ? 'bg-red-500 ring-8 ring-red-500/10' :
-                                                c.predicted_priority === 'Medium' ? 'bg-amber-500 ring-8 ring-amber-500/10' :
-                                                    'bg-emerald-500 ring-8 ring-emerald-500/10'
-                                                }`}></div>
-                                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-px h-8 bg-slate-100 mt-2"></div>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors text-lg tracking-tight">{c.title}</h4>
-                                            <div className="flex items-center gap-3 mt-2">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{c.case_number}</span>
-                                                <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-                                                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-md">{c.case_type}</span>
-                                                <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-                                                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md">E: {c.number_of_evidence || 0}</span>
-                                                <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-                                                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-50 px-2 py-0.5 rounded-md">H: {c.hearing_count || 0}</span>
-                                                <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filed {new Date(c.filing_date).toLocaleDateString()}</span>
-                                            </div>
-                                            <p className="mt-3 text-xs text-slate-500 font-medium italic line-clamp-1 max-w-xl">
-                                                "Reason: {c.priority_reasoning || 'Semantic analysis in progress...'}"
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-10 w-full md:w-auto justify-between md:justify-end">
-                                        <div className="text-right flex flex-col items-end max-w-[200px]">
-                                            <div className="flex flex-wrap gap-1 justify-end">
-                                                {c.impact_reports && c.impact_reports.length > 0 ? (
-                                                    c.impact_reports.slice(0, 2).map((l, i) => (
-                                                        <span key={i} className="text-[8px] font-black uppercase px-2 py-1 rounded bg-blue-50 text-blue-600 border border-blue-100 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">
-                                                            {l.title}
-                                                        </span>
-                                                    ))
-                                                ) : (
-                                                    <span className="text-[8px] font-black uppercase px-2 py-1 rounded bg-slate-50 text-slate-400 border border-slate-100 italic">
-                                                        No Direct Impact
-                                                    </span>
-                                                )}
-                                                {c.impact_reports && c.impact_reports.length > 2 && (
-                                                    <span className="text-[8px] font-bold text-slate-400">+{c.impact_reports.length - 2} more</span>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="text-[10px] uppercase tracking-widest text-slate-500 bg-slate-50 dark:bg-slate-800/50 font-bold">
+                                <th className="px-8 py-4 border-b border-slate-100 dark:border-slate-800">Case ID</th>
+                                <th className="px-8 py-4 border-b border-slate-100 dark:border-slate-800">Description</th>
+                                <th className="px-8 py-4 border-b border-slate-100 dark:border-slate-800">Filing Date</th>
+                                <th className="px-8 py-4 border-b border-slate-100 dark:border-slate-800">Category</th>
+                                <th className="px-8 py-4 border-b border-slate-100 dark:border-slate-800">AI Priority</th>
+                                <th className="px-8 py-4 border-b border-slate-100 dark:border-slate-800">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="6" className="p-20 text-center">
+                                        <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                                        <div className="text-[10px] font-black text-slate-400 animate-pulse tracking-[0.3em] uppercase">Synchronizing Judicial Dockets...</div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                cases.map((c, idx) => (
+                                    <tr
+                                        key={c.id}
+                                        onClick={() => setSelectedCase(c)}
+                                        className={`hover:bg-cream/40 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group ${idx % 2 === 1 ? 'bg-cream/20 dark:bg-slate-800/10' : ''}`}
+                                    >
+                                        <td className="px-8 py-6 text-sm font-bold text-navy-deep dark:text-slate-200">{c.case_number}</td>
+                                        <td className="px-8 py-6">
+                                            <p className="font-bold text-slate-900 dark:text-slate-100 text-sm group-hover:text-primary transition-colors">{c.title}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{c.court_type}</span>
+                                                {c.court_name && (
+                                                    <span className="text-[9px] font-medium text-slate-400 italic">• {c.court_name}</span>
                                                 )}
                                             </div>
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1">Law Impact Matrix</span>
-                                        </div>
-                                        <div className="p-3 bg-slate-50 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
-                                            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
-                            {/* Load more removed as per Top 10 requirement */}
-                        </>
-                    )}
+                                        </td>
+                                        <td className="px-8 py-6 text-sm text-slate-500 font-medium">
+                                            {new Date(c.filing_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded">
+                                                {c.case_type}
+                                            </span>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-1.5 w-16 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                    <div className={`h-full ${c.predicted_priority === 'High' ? 'bg-red-500' : 'bg-primary'} w-[${(c.priority_score * 100).toFixed(0)}%]`}></div>
+                                                </div>
+                                                <span className={`text-xs font-black ${c.predicted_priority === 'High' ? 'text-red-600' : 'text-primary'}`}>
+                                                    {(c.priority_score * 100).toFixed(0)}/100
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <span className={`px-2.5 py-1 text-[10px] font-bold rounded uppercase border ${c.predicted_priority === 'High' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-primary/10 text-primary border-primary/20'
+                                                }`}>
+                                                {c.predicted_priority === 'High' ? 'Urgent' : 'Selected'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div className="px-8 py-5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <p className="text-[10px] text-slate-500 font-bold tracking-widest italic uppercase">Master Judicial Index | High Definition AI Priority Ranking</p>
+                    <div className="flex gap-2">
+                        <button className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 font-bold bg-white dark:bg-slate-800 text-slate-700 hover:bg-slate-50">1</button>
+                    </div>
                 </div>
             </motion.div>
 
@@ -199,140 +314,255 @@ const Cases = () => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setSelectedCase(null)}
-                            className="fixed inset-0 bg-slate-900/80 backdrop-blur-md"
+                            className="fixed inset-0 bg-navy-deep/60 backdrop-blur-md"
                         />
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="bg-white rounded-[3.5rem] max-w-2xl w-full max-h-[90vh] shadow-3xl overflow-hidden relative z-10 border border-white/20 flex flex-col"
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="bg-white dark:bg-slate-900 rounded-xl max-w-5xl w-full max-h-[90vh] shadow-3xl overflow-hidden relative z-10 border border-slate-200 dark:border-slate-700 flex flex-col"
                         >
-                            <div className="p-10 bg-slate-900 text-white relative flex-shrink-0">
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 blur-[100px] rounded-full -mr-32 -mt-32"></div>
+                            <div className="p-8 bg-navy-deep text-white relative flex-shrink-0">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
                                 <div className="flex justify-between items-start relative z-10">
                                     <div>
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="bg-blue-600 p-2 rounded-xl">
-                                                <Scale className="w-5 h-5" />
-                                            </div>
-                                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Judicial Insight Report</span>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <span className="material-symbols-outlined text-primary">auto_awesome</span>
+                                            <span className="text-sm font-bold uppercase tracking-[0.3em] text-primary">Judicial Reasoning Report</span>
                                         </div>
-                                        <h2 className="text-3xl font-black tracking-tight leading-tight">{selectedCase.title}</h2>
-                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-4 flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                                            {selectedCase.case_number}
-                                        </p>
+                                        <h2 className="font-serif text-4xl font-bold tracking-tight">{selectedCase.title}</h2>
+                                        <p className="text-primary/70 text-sm font-bold uppercase tracking-widest mt-2">{selectedCase.case_number}</p>
                                     </div>
-                                    <button onClick={() => setSelectedCase(null)} className="p-3 hover:bg-white/10 rounded-2xl transition-all font-black text-2xl flex items-center justify-center w-12 h-12">×</button>
+                                    <button onClick={() => setSelectedCase(null)} className="p-2 hover:bg-white/10 rounded-lg transition-all text-white/50 hover:text-white">
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
                                 </div>
                             </div>
-                            <div className="p-12 space-y-10 overflow-y-auto custom-scrollbar flex-grow">
-                                <div className="bg-blue-600/5 border border-blue-600/10 p-8 rounded-[2.5rem] relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                                        <Scale className="w-20 h-20 text-blue-600" />
-                                    </div>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">
-                                            <Scale className="w-4 h-4" /> Why is this case prioritized?
-                                        </h3>
-                                        <span className="bg-blue-600 text-[8px] text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Judicial Analysis</span>
-                                    </div>
-                                    <p className="text-slate-900 leading-relaxed text-base font-semibold italic relative z-10">
-                                        "{selectedCase.priority_reasoning || 'AI is calculating prioritization weights based on evidence density and case category...'}"
+
+                            <div className="p-10 space-y-8 overflow-y-auto custom-scrollbar flex-grow bg-cream/30 dark:bg-slate-900">
+                                <div className="space-y-4 font-serif text-slate-800 dark:text-slate-200 leading-relaxed italic border-l-2 border-primary/30 pl-8 bg-white dark:bg-slate-800/80 p-8 rounded-xl shadow-sm">
+                                    <p className="text-lg">
+                                        "{selectedCase.priority_reasoning || 'Calculating specific priority vectors based on Section 4(b) Urgency Criteria and pendency weightage...'}"
                                     </p>
                                 </div>
 
-                                <div className="space-y-8">
-                                    <div className="bg-slate-50 border border-slate-200/50 p-8 rounded-[2.5rem]">
-                                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
-                                            <FileText className="w-4 h-4 text-blue-600" /> Case Description
-                                        </h3>
-                                        <p className="text-slate-600 text-sm leading-relaxed font-medium">
-                                            {selectedCase.description || 'No detailed description provided for this judicial record.'}
-                                        </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700">
+                                        <h4 className="text-sm uppercase font-bold tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-sm text-primary">balance</span>
+                                            Judicial Jurisdiction
+                                        </h4>
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-medium text-slate-500">Court Type</span>
+                                                <span className="text-sm font-bold text-navy-deep dark:text-primary uppercase">{selectedCase.court_type || 'Master'}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-medium text-slate-500">Seat of Authority</span>
+                                                <span className="text-sm font-bold text-slate-900 dark:text-white text-right ml-4">{selectedCase.court_name || 'General'}</span>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    {selectedCase.impact_reports && selectedCase.impact_reports.length > 0 ? (
-                                        <div className="space-y-6">
-                                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 px-4">
-                                                <Scale className="w-4 h-4 text-emerald-600" /> Legislative Impact Insights (Explainable AI)
-                                            </h3>
-                                            {selectedCase.impact_reports.map((impact, idx) => (
-                                                <div key={idx} className="bg-emerald-50/50 border border-emerald-100 p-8 rounded-[2.5rem] relative overflow-hidden group hover:bg-emerald-50 transition-colors">
-                                                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                                        <FileText className="w-16 h-16 text-emerald-600" />
-                                                    </div>
-                                                    <div className="flex justify-between items-start mb-4">
-                                                        <h4 className="font-black text-slate-900 text-lg uppercase tracking-tight">{impact.title}</h4>
-                                                        <span className="bg-emerald-600 text-[8px] text-white px-2 py-1 rounded-full font-black uppercase tracking-widest leading-none">High Relevance</span>
-                                                    </div>
-                                                    <p className="text-slate-700 text-sm leading-relaxed font-semibold italic border-l-4 border-emerald-500 pl-4 py-2 bg-white/50 rounded-r-xl">
-                                                        "{impact.explanation}"
-                                                    </p>
-                                                    <div className="mt-4 flex items-center gap-2 text-[9px] font-black text-emerald-600 uppercase tracking-widest">
-                                                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                                                        AI-Generated Judicial Analysis
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="bg-amber-50/50 border border-amber-100 p-8 rounded-[2.5rem] text-center">
-                                            <p className="text-amber-700 text-xs font-bold uppercase tracking-widest">
-                                                No new legislative impacts detected for this case.
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    <div className="bg-white border border-slate-100 p-8 rounded-[2.5rem] shadow-sm">
-                                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 mb-6">
-                                            <BarChart3 className="w-4 h-4 text-indigo-600" /> Priority Metrics Visualization
-                                        </h3>
-                                        <div className="h-64">
+                                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700">
+                                        <h4 className="text-sm uppercase font-bold tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-sm text-primary">analytics</span>
+                                            Priority Distribution
+                                        </h4>
+                                        <div className="h-32">
                                             <Bar
                                                 data={{
-                                                    labels: ['Statutory Weight', 'Evidence Density', 'Procedural History'],
+                                                    labels: ['Pending Days', 'No Evidence', 'Hearing'],
                                                     datasets: [{
-                                                        label: 'Priority Score Contribution',
-                                                        data: [
-                                                            selectedCase.case_type?.toUpperCase().includes('CRIMINAL') || selectedCase.case_type?.toUpperCase().includes('BAIL') ? 0.5 : 0.3,
-                                                            (selectedCase.number_of_evidence || 0) * 0.05,
-                                                            (selectedCase.hearing_count || 0) * 0.03
-                                                        ],
-                                                        backgroundColor: [
-                                                            'rgba(59, 130, 246, 0.6)',
-                                                            'rgba(99, 102, 241, 0.6)',
-                                                            'rgba(245, 158, 11, 0.6)'
-                                                        ],
-                                                        borderRadius: 12,
+                                                        data: [0.8, 0.4, 0.6],
+                                                        backgroundColor: ['#3B82F6', '#F97316', '#10B981'],
+                                                        borderRadius: 6
                                                     }]
                                                 }}
                                                 options={{
                                                     responsive: true,
                                                     maintainAspectRatio: false,
-                                                    plugins: {
-                                                        legend: { display: false }
-                                                    },
-                                                    scales: {
-                                                        y: { beginAtZero: true, max: 1.0, ticks: { font: { size: 10, weight: '900' } } },
-                                                        x: { ticks: { font: { size: 10, weight: '900' } } }
-                                                    }
+                                                    plugins: { legend: { display: false } },
+                                                    scales: { x: { ticks: { font: { size: 12, weight: 'bold' }, color: '#64748b' }, grid: { display: false } }, y: { display: false, grid: { display: false } } }
                                                 }}
                                             />
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-8">
-                                    <DetailBox label="Metric score" val={(selectedCase.priority_score || 0).toFixed(2)} iconBg="bg-blue-50" color="text-blue-600" />
-                                    <DetailBox label="Evidence count" val={selectedCase.number_of_evidence || 0} iconBg="bg-indigo-50" color="text-indigo-600" />
-                                    <DetailBox label="Hearing count" val={selectedCase.hearing_count || 0} iconBg="bg-amber-50" color="text-amber-600" />
+                                <div className="bg-white dark:bg-slate-800 p-8 rounded-xl border border-slate-100 dark:border-slate-700">
+                                    <h4 className="text-sm uppercase font-bold tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-sm text-primary">description</span>
+                                        Case Abstract
+                                    </h4>
+                                    <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                                        {selectedCase.description || 'No detailed abstract recorded for this judicial matter. Preliminary AI scanning suggests standard procedural compliance.'}
+                                    </p>
                                 </div>
                             </div>
-                            <div className="p-10 bg-slate-50 border-t border-slate-100 flex justify-end gap-4">
-                                <button onClick={() => setSelectedCase(null)} className="px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-500 hover:text-slate-900">Close</button>
-                                <button onClick={() => setSelectedCase(null)} className="btn-primary">Acknowledge</button>
+
+                            <div className="p-8 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                                <button onClick={() => setSelectedCase(null)} className="px-6 py-2.5 rounded-lg font-bold text-xs uppercase tracking-widest text-slate-500 hover:text-navy-deep transition-colors">Close Docket</button>
+                                <button onClick={() => setSelectedCase(null)} className="px-6 py-2.5 bg-navy-deep text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-navy-deep/90 transition-all shadow-lg shadow-navy-deep/20 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                                    Acknowledge Priority
+                                </button>
                             </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Create Case Modal */}
+            <AnimatePresence>
+                {showCreateModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => !formLoading && setShowCreateModal(false)}
+                            className="fixed inset-0 bg-navy-deep/60 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="bg-white dark:bg-slate-900 rounded-xl max-w-4xl w-full max-h-[90vh] shadow-3xl overflow-hidden relative z-10 border border-slate-200 dark:border-slate-700 flex flex-col"
+                        >
+                            <div className="p-8 bg-navy-deep text-white relative flex-shrink-0">
+                                <div className="flex justify-between items-start relative z-10">
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <span className="material-symbols-outlined text-primary">add_circle</span>
+                                            <span className="text-sm font-bold uppercase tracking-[0.3em] text-primary">New Judicial Filing</span>
+                                        </div>
+                                        <h2 className="font-serif text-3xl font-bold tracking-tight">Initiate Case Docket</h2>
+                                    </div>
+                                    <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-white/10 rounded-lg transition-all text-white/50 hover:text-white">
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleCreateCase} className="p-10 space-y-6 overflow-y-auto custom-scrollbar flex-grow bg-cream/30 dark:bg-slate-900">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Case Number / CNR</label>
+                                        <input
+                                            required
+                                            value={formData.case_number}
+                                            onChange={e => setFormData({ ...formData, case_number: e.target.value })}
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                                            placeholder="e.g. DL-678-2024"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Case Category</label>
+                                        <select
+                                            value={formData.case_type}
+                                            onChange={e => setFormData({ ...formData, case_type: e.target.value })}
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                                        >
+                                            <option>Civil</option>
+                                            <option>Criminal</option>
+                                            <option>Family</option>
+                                            <option>Constitutional</option>
+                                            <option>Commercial</option>
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-2 space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Case Title (Parties)</label>
+                                        <input
+                                            required
+                                            value={formData.title}
+                                            onChange={e => setFormData({ ...formData, title: e.target.value })}
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                                            placeholder="e.g. State vs. John Doe"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2 space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Matter Description</label>
+                                        <textarea
+                                            value={formData.description}
+                                            onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all h-32 resize-none"
+                                            placeholder="Brief overview of the legal matter..."
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Filing Date</label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={formData.filing_date}
+                                            onChange={e => setFormData({ ...formData, filing_date: e.target.value })}
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Judicial Jurisdiction</label>
+                                        <select
+                                            value={formData.court_type}
+                                            onChange={e => setFormData({ ...formData, court_type: e.target.value })}
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                                        >
+                                            <option>Supreme Court</option>
+                                            <option>High Court</option>
+                                            <option>District Court</option>
+                                            <option>Session Court</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Urgency Level</label>
+                                        <select
+                                            value={formData.urgency}
+                                            onChange={e => setFormData({ ...formData, urgency: e.target.value })}
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                                        >
+                                            <option>Low</option>
+                                            <option>Medium</option>
+                                            <option>High</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Evidence Count</label>
+                                        <input
+                                            type="number"
+                                            value={formData.number_of_evidence}
+                                            onChange={e => setFormData({ ...formData, number_of_evidence: parseInt(e.target.value) || 0 })}
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="p-6 bg-primary/5 border border-primary/20 rounded-xl flex items-start gap-3">
+                                    <span className="material-symbols-outlined text-primary">info</span>
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-normal">
+                                        Filing a new case will trigger the AI Prioritization Engine. Demographic data, case complexity, and evidence count will be analyzed to assign a priority score.
+                                    </p>
+                                </div>
+                                <div className="flex justify-end gap-4 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreateModal(false)}
+                                        className="px-6 py-2.5 rounded-lg font-bold text-xs uppercase tracking-widest text-slate-500 hover:text-navy-deep transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={formLoading}
+                                        className="px-8 py-2.5 bg-navy-deep text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-navy-deep/90 transition-all shadow-lg shadow-navy-deep/20 flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                        {formLoading ? (
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        ) : (
+                                            <span className="material-symbols-outlined text-sm">send</span>
+                                        )}
+                                        File Case Docket
+                                    </button>
+                                </div>
+                            </form>
                         </motion.div>
                     </div>
                 )}

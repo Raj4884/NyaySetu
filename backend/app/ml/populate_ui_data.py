@@ -14,34 +14,76 @@ def populate_real_data():
         print("CSV not found.")
         return
 
-    print("Populating database with production samples...")
-    # Clear existing non-essential cases if needed, but here we just add
-    df = pd.read_csv(csv_path, nrows=100) # Inject 100 interesting cases
+    print(f"Cleaning existing cases and preparing for massive ingestion (1M+ rows)...")
+    Case.objects.delete()
     
     ml = MLService()
+    chunk_size = 5000 # Large chunks for speed
+    count = 0
     
-    for _, row in df.iterrows():
-        cnr = str(row['CASE_TYPE'])[:2] + "-" + str(random.randint(1000, 9999)) + "-" + str(random.randint(2020, 2026))
+    # Using chunksize for memory efficiency
+    for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
+        chunk = chunk.fillna('')
+        cases_to_create = []
         
-        case = Case(
-            case_number=cnr,
-            case_type=str(row['CASE_TYPE']),
-            title=f"Proceedings: {row['CASE_TYPE']} - Ref {cnr[-4:]}",
-            description="Automated sync from judicial production logs.",
-            filing_date=datetime.now() - timedelta(days=random.randint(1, 365)),
-            urgency=random.choice(['High', 'Medium', 'Low']),
-            number_of_evidence=int(row.get('Number_of_Evidence', 0)),
-            hearing_count=int(row.get('HEARING_COUNT', 0)),
-            status=random.choice(['Pending', 'Processed', 'Scheduled'])
-        )
-        
-        # Run through ML service for priority
-        p, s = ml.predict(case)
-        case.predicted_priority = p
-        case.priority_score = s
-        case.save()
+        for _, row in chunk.iterrows():
+            cnr = str(row.get('CNR_NUMBER', ''))
+            if not cnr or cnr == 'nan':
+                cnr = f"GEN-{random.randint(1000, 9999)}-{random.getrandbits(24)}"
+                
+            court_name = str(row.get('COURT_NAME', ''))
+            hc_name = str(row.get('NAME_OF_HIGH_COURT', ''))
+            
+            c_type = 'District Court'
+            hc_lower, cn_lower = hc_name.lower(), court_name.lower()
+            
+            if 'supreme' in hc_lower or 'supreme' in cn_lower:
+                c_type = 'Supreme Court'
+            elif 'high court' in hc_lower or 'high court' in cn_lower:
+                c_type = 'High Court'
+            elif 'session' in cn_lower:
+                c_type = 'Session Court'
+                
+            try:
+                f_date = pd.to_datetime(row.get('DATE_FILED')).to_pydatetime()
+            except:
+                f_date = datetime.now() - timedelta(days=random.randint(1, 4000))
 
-    print(f"✅ Successfully injected {len(df)} real-world samples.")
+            status = str(row.get('CURRENT_STATUS', 'Pending'))
+            if not status or status == 'nan': status = 'Pending'
+
+            case = Case(
+                case_number=cnr,
+                case_type=str(row['CASE_TYPE']),
+                title=f"{row['CASE_TYPE']} ({row.get('CASE_NUMBER', 'N/A')})",
+                description=f"Automated judicial record. Subject: {row.get('CASETYPE_FULLFORM', 'Legal Matter')}",
+                filing_date=f_date,
+                urgency='Medium',
+                number_of_evidence=int(row.get('Number_of_Evidence', 0) or 0),
+                hearing_count=int(row.get('HEARING_COUNT', 0) or 0),
+                status=status,
+                court_type=c_type,
+                court_name=court_name,
+                high_court_name=hc_name
+            )
+            cases_to_create.append(case)
+        
+        # Batch ML Prediction
+        results = ml.predict_batch(cases_to_create)
+        for i, (p, s, r) in enumerate(results):
+            cases_to_create[i].predicted_priority = p
+            cases_to_create[i].priority_score = s
+            cases_to_create[i].priority_reasoning = r
+            
+        # Bulk Insertion
+        try:
+            Case.objects.insert(cases_to_create, load_bulk=False)
+            count += len(cases_to_create)
+            print(f"✅ Ingested {count} cases...")
+        except Exception as e:
+            print(f"Batch Error: {e}")
+
+    print(f"🚀 Mission Accomplished: {count} real-world cases synchronized.")
 
 if __name__ == "__main__":
     populate_real_data()
