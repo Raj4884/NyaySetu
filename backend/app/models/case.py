@@ -9,6 +9,8 @@ class LawImpact(EmbeddedDocument):
     impact_level = StringField(choices=['High', 'Medium', 'Low'])
     url = StringField()
     impact_explanation = StringField()
+    section_matches = ListField(StringField()) # Extracted sections like "Section 41A"
+    raw_score = FloatField() # Numerical score for internal calculation
 
 class Case(Document):
     meta = {
@@ -28,6 +30,8 @@ class Case(Document):
     description = StringField()
     filing_date = DateTimeField(required=True)
     status = StringField(default='Pending')
+    stage = StringField(choices=['Trial', 'Appeal', 'Pre-trial', 'Judgment'], default='Trial')
+    social_sensitivity = IntField(default=0) # Scale of 0-10 or binary
     
     # Detailed Court Info
     court_type = StringField(choices=['Supreme Court', 'High Court', 'District Court', 'Session Court'], default='District Court')
@@ -72,6 +76,8 @@ class Case(Document):
             'priority_reasoning': self.priority_reasoning,
             'number_of_evidence': self.number_of_evidence,
             'hearing_count': self.hearing_count,
+            'stage': self.stage,
+            'social_sensitivity': self.social_sensitivity,
             'lawyer_id': str(self.lawyer.id) if self.lawyer else None,
             'citizen_id': str(self.citizen.id) if self.citizen else None,
             'impact_reports': [
@@ -82,7 +88,9 @@ class Case(Document):
                 'relevance_score': ir.relevance_score,
                 'impact_level': ir.impact_level,
                 'url': ir.url,
-                'explanation': ir.impact_explanation
+                'explanation': ir.impact_explanation,
+                'section_matches': ir.section_matches,
+                'raw_score': ir.raw_score
             } for ir in self.impact_reports
         ] if self.impact_reports else []
         }

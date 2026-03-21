@@ -29,6 +29,23 @@ class NLPService:
         embeddings = torch.mean(torch.tensor(outputs[0]), dim=0)
         return embeddings.tolist()
 
+    def extract_legal_sections(self, text):
+        """
+        Regex-based extraction of legal sections (e.g., Section 41A, Article 21).
+        """
+        import re
+        # Match "Section 123", "Section 123A", "Sec. 123", "Article 123"
+        patterns = [
+            r"Section\s+\d+[A-Z]*",
+            r"Sec\.\s+\d+[A-Z]*",
+            r"Article\s+\d+[A-Z]*",
+            r"Clauses?\s+\d+[A-Z]*"
+        ]
+        combined_pattern = "|".join(patterns)
+        matches = re.findall(combined_pattern, text, re.IGNORECASE)
+        # De-duplicate and normalize
+        return list(set([m.strip().title() for m in matches]))
+
     def generate_summaries(self, text, context=None):
         """
         Humanized Generation: Produces natural, advisory language for legal updates.
@@ -49,8 +66,12 @@ class NLPService:
                 advice_note = "This change specifically shortens the time allowed for completing investigations to help cases move through the courts faster."
             
             # Stage 3: Clean, Narrative Outputs
-            lawyer_summary = f"{base_summary}. {advice_note} It is important to review trial procedures to align with these updated requirements."
-            citizen_summary = f"This update simplifies how '{base_summary.split('.')[0]}' works in the legal system. {advice_note}"
+            sections = self.extract_legal_sections(text)
+            section_note = f" affecting {', '.join(sections[:3])}" if sections else ""
+            
+            lawyer_summary = f"ADMINISTRATIVE ALERT: This enactment{section_note} introduces {base_summary}. {advice_note} Practitioners should evaluate procedural compliance under the new statutory framework."
+            
+            citizen_summary = f"Important Update: {base_summary.split('.')[0].capitalize()}. {advice_note} This means the rules for cases like yours have changed to be more modern and efficient."
             
             return lawyer_summary, citizen_summary
         except Exception as e:

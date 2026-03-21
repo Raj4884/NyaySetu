@@ -41,6 +41,7 @@ class ScraperService:
                 set__lawyer_summary=lawyer_sum,
                 set__citizen_summary=citizen_sum,
                 set__category=self._categorize_enactment(title),
+                set__sections=self.nlp.extract_legal_sections(raw_text),
                 set__scraped_source=url,
                 set__effective_date=datetime.utcnow()
             )

@@ -92,6 +92,7 @@ const Laws = () => {
                             <tr className="text-[10px] uppercase tracking-widest text-slate-500 bg-slate-50 dark:bg-slate-800/50 font-bold">
                                 <th className="px-8 py-4 border-b border-slate-100 dark:border-slate-800">Enactment Title</th>
                                 <th className="px-8 py-4 border-b border-slate-100 dark:border-slate-800">Category</th>
+                                <th className="px-8 py-4 border-b border-slate-100 dark:border-slate-800 text-center">Affected Cases</th>
                                 <th className="px-8 py-4 border-b border-slate-100 dark:border-slate-800">Legal Source</th>
                                 <th className="px-8 py-4 border-b border-slate-100 dark:border-slate-800 text-right">Action</th>
                             </tr>
@@ -100,7 +101,17 @@ const Laws = () => {
                             {laws.map((l, idx) => (
                                 <tr
                                     key={l.id}
-                                    onClick={() => setSelectedLaw(l)}
+                                    onClick={async () => {
+                                        try {
+                                            const { data } = await axios.get(`/api/laws/${l.id}`, {
+                                                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                                            });
+                                            setSelectedLaw(data);
+                                        } catch (err) {
+                                            console.error(err);
+                                            setSelectedLaw(l); // Fallback to list data
+                                        }
+                                    }}
                                     className={`hover:bg-cream/40 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group ${idx % 2 === 1 ? 'bg-cream/20 dark:bg-slate-800/10' : ''}`}
                                 >
                                     <td className="px-8 py-6">
@@ -120,6 +131,14 @@ const Laws = () => {
                                         <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-3 py-1 rounded uppercase tracking-widest border border-slate-200 dark:border-slate-700">
                                             {l.category}
                                         </span>
+                                    </td>
+                                    <td className="px-8 py-6 text-center">
+                                        <div className="flex flex-col items-center">
+                                            <span className="text-sm font-black text-primary bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
+                                                {l.affected_count || 0}
+                                            </span>
+                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mt-1">Pending Matters</span>
+                                        </div>
                                     </td>
                                     <td className="px-8 py-6">
                                         <div className="flex flex-col gap-0.5">
@@ -230,8 +249,15 @@ const Laws = () => {
                                                                 </span>
                                                                 <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-1">
                                                                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                                                                    Linked
+                                                                    Linked • Score: {caseItem.raw_score || 'N/A'}
                                                                 </span>
+                                                            </div>
+                                                            <div className="flex gap-2 mb-2">
+                                                                {caseItem.section_matches?.map(sec => (
+                                                                    <span key={sec} className="text-[8px] font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded border border-primary/30 uppercase">
+                                                                        {sec}
+                                                                    </span>
+                                                                ))}
                                                             </div>
                                                             <h5 className="text-sm font-bold text-slate-900 dark:text-white group-hover/card:text-primary transition-colors">
                                                                 {caseItem.title}

@@ -23,6 +23,7 @@ const Dashboard = () => {
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [selectedCase, setSelectedCase] = useState(null);
     const user = JSON.parse(localStorage.getItem('user'));
 
     const observer = useRef();
@@ -56,7 +57,13 @@ const Dashboard = () => {
             if (res.data.length === 0) {
                 setHasMore(false);
             } else {
-                setAllCases(prev => pageNum === 1 ? res.data : [...prev, ...res.data]);
+                setAllCases(prev => {
+                    const newCases = pageNum === 1 ? res.data : [...prev, ...res.data];
+                    if (pageNum === 1 && newCases.length > 0 && !selectedCase) {
+                        setSelectedCase(newCases[0]);
+                    }
+                    return newCases;
+                });
                 if (res.data.length < 20) setHasMore(false);
             }
         } catch (err) {
@@ -143,26 +150,26 @@ const Dashboard = () => {
                     <h1 className="font-serif text-3xl font-bold text-navy-deep dark:text-white">Dashboard</h1>
                     <p className="text-slate-500 dark:text-slate-400 text-sm italic">Analysis of Docket Pendency & Judicial Urgency</p>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Total Cases Card */}
                     <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-3 border-l-4 border-l-blue-500">
-                        <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Total Alert</p>
+                        <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Total Cases</p>
                         <div className="flex items-end justify-between">
                             <p className="text-4xl font-serif font-bold text-navy-deep dark:text-white">{stats.total.toLocaleString()}</p>
-                            <span className="text-blue-600 text-xs font-bold px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded">All</span>
+                            <span className="text-blue-600 text-xs font-bold px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded">Records</span>
                         </div>
                     </div>
-                    
-                    {/* Pending Cases Card */}
+
+                    {/* Law Alerts Card */}
                     <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-3 border-l-4 border-l-amber-500">
-                        <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Total Pending</p>
+                        <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Law Alerts</p>
                         <div className="flex items-end justify-between">
-                            <p className="text-4xl font-serif font-bold text-amber-600 dark:text-amber-400">{stats.pending.toLocaleString()}</p>
-                            <span className="text-amber-600 text-xs font-bold px-2 py-1 bg-amber-50 dark:bg-amber-900/20 rounded">Pending</span>
+                            <p className="text-4xl font-serif font-bold text-amber-600 dark:text-amber-400">{stats.critical.toLocaleString()}</p>
+                            <span className="text-amber-600 text-xs font-bold px-2 py-1 bg-amber-50 dark:bg-amber-900/20 rounded">Impacts</span>
                         </div>
                     </div>
-                    
+
                     {/* Avg Pendency Card */}
                     <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-3 border-l-4 border-l-orange-500">
                         <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Avg. Pendency</p>
@@ -204,16 +211,21 @@ const Dashboard = () => {
                                     <th className="px-6 py-4 font-bold border-b border-slate-100 dark:border-slate-800">Filing Date</th>
                                     <th className="px-6 py-4 font-bold border-b border-slate-100 dark:border-slate-800">Category</th>
                                     <th className="px-6 py-4 font-bold border-b border-slate-100 dark:border-slate-800">AI Priority</th>
-                                    <th className="px-6 py-4 font-bold border-b border-slate-100 dark:border-slate-800">Law impact analysis</th>
+                                    <th className="px-6 py-4 font-bold border-b border-slate-100 dark:border-slate-800">Law Impact Analysis</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {allCases.slice(0, 10).map((c, idx) => (
-                                    <tr key={c.id} className={`hover:bg-cream/30 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group ${idx % 2 === 1 ? 'bg-cream/20 dark:bg-slate-800/20' : ''}`}>
+                                    <tr
+                                        key={c.id}
+                                        onClick={() => setSelectedCase(c)}
+                                        className={`hover:bg-cream/30 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group ${selectedCase?.id === c.id ? 'bg-primary/5 border-l-4 border-l-primary' : (idx % 2 === 1 ? 'bg-cream/20 dark:bg-slate-800/20' : '')
+                                            }`}
+                                    >
                                         <td className="px-6 py-4 text-sm font-bold text-navy-deep dark:text-slate-200">{c.case_number}</td>
                                         <td className="px-6 py-4 text-sm">
-                                            <p className="font-medium text-slate-900 dark:text-slate-100">{c.title.split(' vs ')[0]}</p>
-                                            <p className="text-xs text-slate-500 italic">vs. {c.title.split(' vs ')[1] || 'Respondents'}</p>
+                                            <p className="font-medium text-slate-900 dark:text-slate-100">{c.title.includes(' vs ') ? c.title.split(' vs ')[0] : c.title}</p>
+                                            <p className="text-xs text-slate-500 italic">vs. {c.title.includes(' vs ') ? c.title.split(' vs ')[1] : 'Respondents'}</p>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-slate-500">{new Date(c.filing_date).toLocaleDateString()}</td>
                                         <td className="px-6 py-4 text-xs font-bold uppercase tracking-tighter text-slate-400">{c.case_type}</td>
@@ -228,10 +240,17 @@ const Dashboard = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase ${c.predicted_priority === 'High' ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'bg-primary/10 text-primary'
-                                                }`}>
-                                                {c.status}
-                                            </span>
+                                            <div className="flex items-center gap-2 flex-nowrap">
+                                                <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase whitespace-nowrap ${c.predicted_priority === 'High' ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'bg-primary/10 text-primary'
+                                                    }`}>
+                                                    {c.status}
+                                                </span>
+                                                {(c.impact_reports?.length > 0) && (
+                                                    <span className="px-2 py-1 text-[10px] bg-amber-500 text-white rounded font-bold animate-pulse whitespace-nowrap">
+                                                        LAW IMPACT
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -254,15 +273,15 @@ const Dashboard = () => {
                                 <h3 className="font-serif text-lg font-bold">Judicial Reasoning</h3>
                                 <span className="material-symbols-outlined text-primary">auto_awesome</span>
                             </div>
-                            <p className="text-[10px] uppercase tracking-widest text-primary/80 font-bold">XAI Analysis: {allCases[0]?.case_number || 'IDENT-HUB'}</p>
+                            <p className="text-[10px] uppercase tracking-widest text-primary/80 font-bold">XAI Analysis: {selectedCase?.case_number || 'IDENT-HUB'}</p>
                         </div>
                         <div className="p-8 flex flex-col gap-6 bg-cream/30 dark:bg-slate-900">
                             <div className="space-y-4 font-serif text-slate-800 dark:text-slate-200 leading-relaxed italic border-l-2 border-primary/30 pl-6">
                                 <p className="text-sm">
-                                    "This honorable system prioritizes the matter of <span className="font-bold">{allCases[0]?.title || 'Select Case'}</span> under the mandate of <span className="underline decoration-primary/50 underline-offset-4">Judicial Efficiency Act 2023</span>."
+                                    "This honorable system prioritizes the matter of <span className="font-bold">{selectedCase?.title || 'Select Case'}</span> under the mandate of <span className="underline decoration-primary/50 underline-offset-4">Judicial Efficiency Act 2023</span>."
                                 </p>
                                 <p className="text-sm">
-                                    {allCases[0]?.priority_reasoning || "Reasoning engine is initializing. Priority weights are being calculated based on evidence density and case category."}
+                                    {selectedCase?.priority_reasoning || "Reasoning engine is initializing. Priority weights are being calculated based on evidence density and case category."}
                                 </p>
                             </div>
                             <div className="space-y-3">
@@ -270,15 +289,15 @@ const Dashboard = () => {
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
                                         <span className="text-xs font-medium">Relevance to Article 21</span>
-                                        <span className="text-xs font-bold text-primary">High</span>
+                                        <span className="text-xs font-bold text-primary">{selectedCase?.description?.toLowerCase().includes('41a') ? 'High' : 'Standard'}</span>
                                     </div>
                                     <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
                                         <span className="text-xs font-medium">Evidence Count</span>
-                                        <span className="text-xs font-bold text-red-500">{allCases[0]?.number_of_evidence || 0}</span>
+                                        <span className="text-xs font-bold text-red-500">{selectedCase?.number_of_evidence || 0}</span>
                                     </div>
                                     <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
                                         <span className="text-xs font-medium">Public Interest</span>
-                                        <span className="text-xs font-bold text-primary">Moderate</span>
+                                        <span className="text-xs font-bold text-primary">{selectedCase?.social_sensitivity > 5 ? 'High' : 'Moderate'}</span>
                                     </div>
                                 </div>
                             </div>

@@ -17,6 +17,52 @@ class ImpactService:
             "Commercial": ["contract", "commercial", "corporation", "comm", "co"],
             "Civil": ["inheritance", "property", "civil", "cs", "os", "adj", "rc", "mca", "arca"]
         }
+        self.weights = {
+            "section_match": 40,
+            "similarity": 30,
+            "stage_appeal": 15,
+            "stage_trial": 10,
+            "criminal_type": 10,
+            "sensitivity": 5
+        }
+
+    def calculate_impact_score(self, law, case, similarity, law_sections, case_sections):
+        """
+        SRS Weighted Scoring Implementation.
+        """
+        score = 0
+        reasons = []
+
+        # 1. Section Match (+40)
+        overlap = set(law_sections) & set(case_sections)
+        if overlap:
+            score += self.weights["section_match"]
+            reasons.append(f"Statute Overlap: {', '.join(overlap)}")
+        
+        # 2. Semantic Similarity (+30 * sim)
+        sim_contribution = similarity * self.weights["similarity"]
+        score += sim_contribution
+        reasons.append(f"Semantic Alignment: {similarity:.2f}")
+
+        # 3. Case Stage (+15 / +10)
+        if case.stage == 'Appeal':
+            score += self.weights["stage_appeal"]
+            reasons.append("High Priority Stage: Appeal")
+        elif case.stage == 'Trial':
+            score += self.weights["stage_trial"]
+            reasons.append("Standard Stage: Trial")
+
+        # 4. Case Type (+10)
+        if case.case_type and any(kw in case.case_type.lower() for kw in ["criminal", "bns", "ipc", "crpc"]):
+            score += self.weights["criminal_type"]
+            reasons.append("Criminal Category Weight")
+
+        # 5. Social Sensitivity (+5)
+        if getattr(case, 'social_sensitivity', 0) > 5:
+            score += self.weights["sensitivity"]
+            reasons.append("Social Sensitivity Factor")
+
+        return min(round(score, 2), 100), reasons
 
     def analyze_and_apply_impact(self, law):
         """
@@ -66,8 +112,8 @@ class ImpactService:
         
         # If no stakeholders found, fall back to general sample for analytics
         if matching_cases.count() == 0:
-            matching_cases = Case.objects(keyword_filter).limit(100)
-            print(f"DEBUG: Falling back to {matching_cases.count()} general cases.")
+            matching_cases = Case.objects(keyword_filter).limit(2000)
+            print(f"DEBUG: Falling back to {matching_cases.count()} general cases for thorough analysis.")
         
         # ---------------------------------------------------------
         # SPAM PREVENTION: GROUP ALERTS BY USER
@@ -87,20 +133,22 @@ class ImpactService:
             print(f"DEBUG: Case {case.case_number} | Sim: {similarity:.4f}")
             citation_match = self._check_citations(law_text, case_text)
             
-            # Final Match Criteria (Methodology Step 4)
-            is_stakeholder = case.lawyer is not None or case.citizen is not None
-            base_threshold = 0.10 if is_stakeholder else 0.50
-            high_threshold = 0.25 if is_stakeholder else 0.70
-            med_threshold = 0.18 if is_stakeholder else 0.55
+            law_sections = self.nlp.extract_legal_sections(law_text)
+            case_sections = self.nlp.extract_legal_sections(case_text)
             
-            if (citation_match and similarity > (base_threshold/2)) or similarity > base_threshold:
-                if similarity > high_threshold or (citation_match and similarity > med_threshold):
-                    impact_level = 'High'
-                elif similarity > med_threshold:
-                    impact_level = 'Medium'
-                else:
-                    impact_level = 'Low'
+            impact_score, score_reasons = self.calculate_impact_score(law, case, similarity, law_sections, case_sections)
+            
+            # Impact Levels based on Score
+            if impact_score >= 70:
+                impact_level = 'High'
+            elif impact_score >= 40:
+                impact_level = 'Medium'
+            else:
+                impact_level = 'Low'
 
+            # Final Match Criteria (SRS Alignment)
+            # We apply it if score > 30 or direct citation/section match
+            if impact_score > 30 or (set(law_sections) & set(case_sections)):
                 impact_entry = LawImpact(
                     precedent_title=law.title,
                     precedent_citation=self._extract_citation(law.full_text),
@@ -108,7 +156,9 @@ class ImpactService:
                     relevance_score=float(similarity),
                     impact_level=impact_level,
                     url=law.scraped_source,
-                    impact_explanation=self._generate_impact_rationale(law, case)
+                    impact_explanation=self._generate_impact_rationale(law, case, score_reasons),
+                    section_matches=list(set(law_sections) & set(case_sections)),
+                    raw_score=float(impact_score)
                 )
                 
                 Case.objects(id=case.id).update_one(add_to_set__impact_reports=impact_entry)
@@ -179,7 +229,8 @@ class ImpactService:
                 link_to_id=str(law.id)
             ).save()
 
-        law.affecting_cases = [str(c.id) for c in matching_cases[:10]]
+        # Update the law with the final count and non-truncated list
+        law.affected_count = impact_count
         law.save()
             
         return impact_count
@@ -218,17 +269,22 @@ class ImpactService:
             
         return "Statutory Enactment 2024"
 
-    def _generate_impact_rationale(self, law, case):
+    def _generate_impact_rationale(self, law, case, score_reasons=None):
         """
         Generates a conversational, advice-like narrative showing HOW a law affects a case.
         """
-        case_context = f"Case Type: {case.case_type}, Current Status: {case.status}, Evidence Count: {case.number_of_evidence}"
+        case_context = f"Case Type: {case.case_type}, Current Status: {case.status}, Evidence Count: {case.number_of_evidence}, Stage: {case.stage}"
         
         # Get the humanized advice from NLP service
         tech_advice, citizen_advice = self.nlp.generate_summaries(law.full_text, context=case_context)
         
+        # Build reasoning string from breakdown
+        breakdown_str = ""
+        if score_reasons:
+            breakdown_str = " Key impact factors: " + "; ".join(score_reasons) + "."
+
         # Build a warm, advisory opening
-        narrative = f"{citizen_advice} "
+        narrative = f"{citizen_advice}{breakdown_str} "
         
         # Weave in the specific mechanism of impact
         if "BNS" in law.title or "Bharatiya Nyaya Sanhita" in law.title:

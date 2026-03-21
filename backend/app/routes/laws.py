@@ -14,6 +14,14 @@ def get_laws():
     laws = Law.objects().order_by('-created_at')
     return jsonify([l.to_dict() for l in laws]), 200
 
+@laws_bp.route('/<law_id>', methods=['GET'])
+@jwt_required()
+def get_law_detail(law_id):
+    law = Law.objects(id=law_id).first()
+    if not law:
+        return jsonify({'message': 'Law not found'}), 404
+    return jsonify(law.to_dict(include_details=True)), 200
+
 @laws_bp.route('/<law_id>/email', methods=['POST'])
 @jwt_required()
 def email_law_report(law_id):

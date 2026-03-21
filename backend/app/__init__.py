@@ -17,7 +17,8 @@ def create_app():
     app.config['JWT_SECRET_KEY'] = 'nyaysetu-jwt-secret-2026'
     
     # MongoDB Connection
-    connect(host='mongodb://localhost:27017/nyaysetu_db')
+    mongo_uri = os.getenv('MONGO_URI', 'mongodb://localhost:27017/nyaysetu_db')
+    connect(host=mongo_uri)
     
     # Extensions
     jwt.init_app(app)

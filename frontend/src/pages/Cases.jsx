@@ -41,7 +41,9 @@ const Cases = () => {
         court_type: 'District Court',
         court_name: '',
         urgency: 'Medium',
-        number_of_evidence: 0
+        number_of_evidence: 0,
+        stage: 'Trial',
+        social_sensitivity: 0
     });
 
     const fetchCases = async (pageNum = 1, shouldAppend = false, status = '') => {
@@ -118,7 +120,9 @@ const Cases = () => {
                 court_type: 'District Court',
                 court_name: '',
                 urgency: 'Medium',
-                number_of_evidence: 0
+                number_of_evidence: 0,
+                stage: 'Trial',
+                social_sensitivity: 0
             });
             fetchCases(1, false, statusFilter);
         } catch (err) {
@@ -399,6 +403,41 @@ const Cases = () => {
                                         {selectedCase.description || 'No detailed abstract recorded for this judicial matter. Preliminary AI scanning suggests standard procedural compliance.'}
                                     </p>
                                 </div>
+
+                                {selectedCase.impact_reports && selectedCase.impact_reports.length > 0 && (
+                                    <div className="bg-white dark:bg-slate-800 p-8 rounded-xl border border-slate-100 dark:border-slate-700 space-y-4">
+                                        <h4 className="text-sm uppercase font-bold tracking-widest text-primary mb-4 flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-sm text-primary">gavel</span>
+                                            Active Law Impact Reports ({selectedCase.impact_reports.length})
+                                        </h4>
+                                        <div className="space-y-4">
+                                            {selectedCase.impact_reports.map((report, idx) => (
+                                                <div key={idx} className="p-5 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+                                                    <div className="flex justify-between items-start mb-3">
+                                                        <h5 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">{report.title}</h5>
+                                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${report.impact_level === 'High' ? 'bg-red-100 text-red-700' :
+                                                            report.impact_level === 'Medium' ? 'bg-amber-100 text-amber-700' :
+                                                                'bg-emerald-100 text-emerald-700'
+                                                            }`}>
+                                                            {report.impact_level} Impact
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs italic font-serif text-slate-600 dark:text-slate-400 mb-3">"{report.explanation}"</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {report.section_matches?.map(sec => (
+                                                            <span key={sec} className="text-[8px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20 uppercase tracking-widest">
+                                                                {sec}
+                                                            </span>
+                                                        ))}
+                                                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest ml-auto self-center">
+                                                            Score: {report.raw_score}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="p-8 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
@@ -531,6 +570,30 @@ const Cases = () => {
                                             type="number"
                                             value={formData.number_of_evidence}
                                             onChange={e => setFormData({ ...formData, number_of_evidence: parseInt(e.target.value) || 0 })}
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Case Stage</label>
+                                        <select
+                                            value={formData.stage}
+                                            onChange={e => setFormData({ ...formData, stage: e.target.value })}
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                                        >
+                                            <option>Pre-trial</option>
+                                            <option>Trial</option>
+                                            <option>Appeal</option>
+                                            <option>Judgment</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Social Sensitivity (0-10)</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="10"
+                                            value={formData.social_sensitivity}
+                                            onChange={e => setFormData({ ...formData, social_sensitivity: parseInt(e.target.value) || 0 })}
                                             className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
                                         />
                                     </div>

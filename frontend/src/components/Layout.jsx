@@ -26,10 +26,8 @@ const Layout = ({ children }) => {
             <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-navy-deep px-8 py-4 text-white z-50">
                 <div className="flex items-center gap-8">
                     <Link to="/" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
-                        <div className="size-10 text-primary">
-                            <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                                <path clipRule="evenodd" d="M24 0.757355L47.2426 24L24 47.2426L0.757355 24L24 0.757355ZM21 35.7574V12.2426L9.24264 24L21 35.7574Z" fill="currentColor" fillRule="evenodd"></path>
-                            </svg>
+                        <div className="w-12 h-12 flex items-center justify-center">
+                            <img src="/emblem.png" alt="Nyaysetu Emblem" className="w-full h-full object-contain" />
                         </div>
                         <div>
                             <h2 className="font-serif text-xl font-bold leading-tight tracking-widest uppercase">NyaySetu</h2>

@@ -49,20 +49,36 @@ class MLService:
                 filing_date = case.filing_date if hasattr(case, 'filing_date') else now
                 years_pending = (now - filing_date).days / 365.25
 
+                # 2. Urgency & Sensitivity Augmentation (SRS Alignment)
+                desc = str(case.description or "").lower()
+                urgency_boost = 0
+                if any(kw in desc for kw in ["bail", "custody", "arrest"]):
+                    urgency_boost += 0.10
+                if any(kw in desc for kw in ["injunction", "stay order", "urgent"]):
+                    urgency_boost += 0.08
+                
+                sensitivity_score = float(getattr(case, 'social_sensitivity', 0)) / 10.0 # Normalize 0-10 to 0-1
+
                 feature_list.append([
                     float(type_encoded),
                     float(case.number_of_evidence or 0),
                     float(case.hearing_count or 0),
-                    float(years_pending)
+                    float(years_pending),
+                    sensitivity_score,
+                    urgency_boost
                 ])
 
             # 2. Vectorized Neural Inference
-            features_array = np.array(feature_list)
-            scores = self.model.predict(features_array)
+            # For simplicity, we manually combine the trained model output with our new heuristic boosts
+            # in a production setting, we would re-train the model with these as input features.
+            base_features = np.array([f[:4] for f in feature_list])
+            base_scores = self.model.predict(base_features)
             
             results = []
-            for i, score in enumerate(scores):
-                # 3. Court-Level Augmentation
+            for i, base_score in enumerate(base_scores):
+                # 3. Augmentation logic
+                sensitivity_score = feature_list[i][4]
+                urgency_boost = feature_list[i][5]
                 # Supreme Court and High Court cases get a priority boost
                 court_boost = 0
                 case_obj = cases[i]
@@ -72,7 +88,7 @@ class MLService:
                     elif case_obj.court_type == 'High Court':
                         court_boost = 0.15
                 
-                total_score = max(0, min(0.99, float(score) + court_boost))
+                total_score = max(0, min(0.99, float(base_score) + court_boost + urgency_boost + (sensitivity_score * 0.15)))
 
                 # 4. Map to Labels
                 if total_score > 0.70:
@@ -140,7 +156,18 @@ class MLService:
                 narrative += "This is mainly because " + ", ".join(reasons[:-1]) + ", and " + reasons[-1] + ". "
             else:
                 narrative += "This is happening because " + reasons[0] + ". "
-        else:
+        
+        # 4. Social & Urgency Rationale (XAI)
+        if getattr(case, 'social_sensitivity', 0) > 6:
+            narrative += "Furthermore, the significant social impact of this matter necessitates accelerated judicial attention. "
+        
+        desc = str(case.description or "").lower()
+        if "custody" in desc or "arrest" in desc:
+            narrative += "The involvement of personal liberty (custody/arrest) triggers immediate high-priority processing. "
+        elif "injunction" in desc or "stay order" in desc:
+            narrative += "The request for interim relief (injunction) requires timely intervention to prevent irreparable harm. "
+
+        if not reasons and not ("custody" in desc or "injunction" in desc):
             narrative += "We are handling this based on the typical timelines for these types of cases. "
 
         # 4. Final Empathy Touch
