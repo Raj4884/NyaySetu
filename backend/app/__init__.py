@@ -17,12 +17,18 @@ def create_app():
     app.config['JWT_SECRET_KEY'] = 'nyaysetu-jwt-secret-2026'
     
     # MongoDB Connection
+    print("Connecting to MongoDB...")
     mongo_uri = os.getenv('MONGO_URI', 'mongodb://localhost:27017/nyaysetu_db')
-    connect(host=mongo_uri)
+    try:
+        connect(host=mongo_uri, serverSelectionTimeoutMS=5000)
+        print("Connected to MongoDB successfully.")
+    except Exception as e:
+        print(f"Error connecting to MongoDB: {e}")
     
     # Extensions
     jwt.init_app(app)
     CORS(app)
+    print("Flask app initialized with extensions.")
     
     # Blueprints
     from app.routes.auth import auth_bp
