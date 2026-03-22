@@ -23,3 +23,5 @@ services:
         value: justice@nyaysetu.gov.in
       - key: JWT_SECRET_KEY
         generateValue: true
+      - key: PYTHONUNBUFFERED
+        value: "1"
