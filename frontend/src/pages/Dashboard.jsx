@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { LayoutDashboard, FileText, Scale, TrendingUp, AlertTriangle, ShieldCheck, Activity, Zap, ChevronRight, Bell, CheckCircle2, Clock, Gavel } from 'lucide-react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
@@ -41,7 +41,7 @@ const Dashboard = () => {
     const fetchStats = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
-            const res = await axios.get('/api/cases/stats', config);
+            const res = await api.get('/api/cases/stats', config);
             setStats(res.data);
         } catch (err) {
             console.error("Stats Fetch Error:", err);
@@ -52,7 +52,7 @@ const Dashboard = () => {
         try {
             setLoadingMore(true);
             const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
-            const res = await axios.get(`/api/cases?per_page=20&page=${pageNum}`, config);
+            const res = await api.get(`/api/cases?per_page=20&page=${pageNum}`, config);
 
             if (res.data.length === 0) {
                 setHasMore(false);
@@ -77,7 +77,7 @@ const Dashboard = () => {
     const fetchNotifications = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
-            const res = await axios.get('/api/notifications', config);
+            const res = await api.get('/api/notifications', config);
             setNotifications(res.data);
             setUnreadCount(res.data.filter(n => !n.read).length);
         } catch (err) {
@@ -88,7 +88,7 @@ const Dashboard = () => {
     const markAllAsRead = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
-            await axios.post('/api/notifications/read-all', {}, config);
+            await api.post('/api/notifications/read-all', {}, config);
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
             setUnreadCount(0);
         } catch (err) {

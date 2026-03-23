@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { Scale, Plus, Search, ChevronRight, Filter, Download, FileText, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -54,7 +54,7 @@ const Cases = () => {
             const params = new URLSearchParams('?limit=10');
             if (status) params.append('status', status);
 
-            const { data } = await axios.get(`/api/cases?${params.toString()}`, {
+            const { data } = await api.get(`/api/cases?${params.toString()}`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
 
@@ -109,7 +109,7 @@ const Cases = () => {
         try {
             setFormLoading(true);
             const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
-            await axios.post('/api/cases', formData, config);
+            await api.post('/api/cases', formData, config);
             setShowCreateModal(false);
             setFormData({
                 case_number: '',

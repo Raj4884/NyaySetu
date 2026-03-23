@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { Shield, Gavel, Briefcase, User as UserIcon, Lock, AtSign, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -15,9 +15,10 @@ const Login = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const { data } = await axios.post('/api/auth/login', { username, password });
+            const { data } = await api.post('/api/auth/login', { username, password });
             localStorage.setItem('token', data.access_token);
             localStorage.setItem('user', JSON.stringify(data.user));
+
             navigate('/');
         } catch (err) {
             alert(err.response?.data?.message || 'Authentication Failed. Please check your credentials.');

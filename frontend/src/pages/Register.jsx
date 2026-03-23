@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { Shield, Gavel, Briefcase, User as UserIcon, Lock, AtSign, ArrowRight, UserPlus, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -17,13 +17,14 @@ const Register = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            await axios.post('/api/auth/register', {
+            await api.post('/api/auth/register', {
                 username,
                 email,
                 password,
                 role,
                 full_name: fullName
             });
+
             alert('Registration Successful! Please login.');
             navigate('/login');
         } catch (err) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, FileSearch, ArrowRight, Zap, Target, Database, Bell, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,7 +14,7 @@ const Laws = () => {
     useEffect(() => {
         const fetchLaws = async () => {
             try {
-                const { data } = await axios.get('/api/laws', {
+                const { data } = await api.get('/api/laws', {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                 });
                 setLaws(data);
@@ -29,7 +29,7 @@ const Laws = () => {
         try {
             setEmailLoading(true);
             const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
-            await axios.post(`/api/laws/${lawId}/email`, {}, config);
+            await api.post(`/api/laws/${lawId}/email`, {}, config);
             alert("✅ Judicial report dispatched to your verified email.");
         } catch (err) {
             console.error(err);
@@ -103,7 +103,7 @@ const Laws = () => {
                                     key={l.id}
                                     onClick={async () => {
                                         try {
-                                            const { data } = await axios.get(`/api/laws/${l.id}`, {
+                                            const { data } = await api.get(`/api/laws/${l.id}`, {
                                                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                                             });
                                             setSelectedLaw(data);
