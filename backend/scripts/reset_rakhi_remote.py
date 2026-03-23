@@ -19,8 +19,10 @@ if not MONGO_URI:
 
 print(f"Connecting to MongoDB Atlas...")
 try:
-    connect(host=MONGO_URI)
+    # Adding SSL workarounds for the handshake error
+    connect(host=MONGO_URI, tls=True, tlsAllowInvalidCertificates=True)
     print("Connected successfully.")
+
 except Exception as e:
     print(f"Connection failed: {e}")
     exit(1)
