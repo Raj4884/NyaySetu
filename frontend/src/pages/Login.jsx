@@ -21,7 +21,9 @@ const Login = () => {
 
             navigate('/');
         } catch (err) {
-            alert(err.response?.data?.message || 'Authentication Failed. Please check your credentials.');
+            console.error("Login Error:", err);
+            const errMsg = err.response?.data?.message || err.message || 'Authentication Failed. Please check your network or credentials.';
+            alert(errMsg);
         } finally {
             setLoading(false);
         }

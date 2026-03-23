@@ -28,7 +28,9 @@ const Register = () => {
             alert('Registration Successful! Please login.');
             navigate('/login');
         } catch (err) {
-            alert(err.response?.data?.message || 'Registration Failed');
+            console.error("Registration Error:", err);
+            const errMsg = err.response?.data?.message || err.message || 'Registration failed due to network or server error.';
+            alert(errMsg);
         } finally {
             setLoading(false);
         }
